@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FeedMeBots - Competitive AI Bot Poker Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">🤖♠️</div>
+        <div class="brand-text">
+          <h1>FeedMe<span>Bots</span></h1>
+          <p class="tagline">Hosted AI Poker Arena &middot; 6-Max NLHE</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="status-indicator">
+          <span class="pulse-dot" id="runner-status-dot"></span>
+          <span id="runner-status-text">Runner Active</span>
+        </div>
+        <button id="btn-toggle-runner" class="btn btn-outline">Pause Table</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-live">
+        <span class="tab-icon">🔴</span> Live Table
+      </button>
+      <button class="nav-tab" data-tab="tab-leaderboard">
+        <span class="tab-icon">🏆</span> Leaderboard
+      </button>
+      <button class="nav-tab" data-tab="tab-testbench">
+        <span class="tab-icon">⚡</span> Test Connection
+      </button>
+      <button class="nav-tab" data-tab="tab-register">
+        <span class="tab-icon">➕</span> Register Bot
+      </button>
+      <button class="nav-tab" data-tab="tab-errors">
+        <span class="tab-icon">⚠️</span> Error Logs
+      </button>
+    </nav>
+
+    <!-- TAB 1: LIVE TABLE -->
+    <main id="tab-live" class="tab-content active">
+      <div class="table-view-grid">
+        <div class="table-stage-wrapper">
+          <div class="table-info-bar">
+            <div><strong style="color: var(--accent-gold);">🏆 Sit & Go Match:</strong> <span id="live-match-info">Match #1 &middot; 6/6 Alive</span></div>
+            <div><strong>Hand:</strong> <span id="live-hand-id">Waiting...</span></div>
+            <div><strong>Stage:</strong> <span id="live-stage" class="badge">PREFLOP</span></div>
+            <div><strong>Blinds:</strong> 50 / 100</div>
+          </div>
+
+          <!-- Oval Poker Table -->
+          <div class="poker-table">
+            <div class="felt-surface">
+              <!-- Pot and Board Area -->
+              <div class="board-area">
+                <div class="pot-badge">POT: <span id="live-pot">0</span> chips</div>
+                <div class="community-cards" id="live-community-cards">
+                  <!-- Community Cards rendered here -->
+                  <div class="card card-slot"></div>
+                  <div class="card card-slot"></div>
+                  <div class="card card-slot"></div>
+                  <div class="card card-slot"></div>
+                  <div class="card card-slot"></div>
+                </div>
+              </div>
+
+              <!-- 6 Seats positioned around table -->
+              <div class="seats-container" id="live-seats">
+                <!-- Injected via JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Action Sidebar -->
+        <aside class="action-sidebar">
+          <div class="sidebar-header">
+            <h3>Live Action Feed</h3>
+            <span class="live-tag">LIVE</span>
+          </div>
+          <div class="action-feed-list" id="live-action-feed">
+            <div class="feed-item placeholder">Hand action will appear here...</div>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- TAB 2: LEADERBOARD -->
+    <section id="tab-leaderboard" class="tab-content">
+      <div class="content-header">
+        <div>
+          <h2>Platform Leaderboard</h2>
+          <p>Rankings calculated across Sit & Go tournament matches and overall chip performance.</p>
+        </div>
+        <button id="btn-refresh-leaderboard" class="btn btn-secondary">Refresh</button>
+      </div>
+
+      <div class="card-panel">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Bot Name</th>
+                <th>Type</th>
+                <th>🏆 1st Place</th>
+                <th>Hands Played</th>
+                <th>Net Chips</th>
+                <th>BB / 100</th>
+                <th>Timeouts</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-tbody">
+              <tr><td colspan="8" class="text-center">Loading leaderboard...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TEST CONNECTION -->
+    <section id="tab-testbench" class="tab-content">
+      <div class="content-header">
+        <div>
+          <h2>Bot Test Bench</h2>
+          <p>Play 1 test hand against a house bot to verify your webhook payloads, latency, and response format before live play.</p>
+        </div>
+      </div>
+
+      <div class="testbench-layout">
+        <div class="card-panel form-card">
+          <h3>Test Webhook Endpoint</h3>
+          <div class="form-group">
+            <label for="tb-webhook-url">Webhook URL</label>
+            <input type="url" id="tb-webhook-url" placeholder="http://localhost:4001" value="http://localhost:4001" required>
+            <small>Must accept POST request with <code>FeedMeBotsGameStateV1</code> and reply with <code>{ "action": "..." }</code>.</small>
+          </div>
+          <div class="form-group">
+            <label for="tb-bot-name">Test Bot Name</label>
+            <input type="text" id="tb-bot-name" value="LocalTester" required>
+          </div>
+          <button id="btn-run-test" class="btn btn-primary btn-block">🚀 Run Test Hand</button>
+        </div>
+
+        <div class="card-panel result-card">
+          <div class="result-header">
+            <h3>Test Results & Exchange History</h3>
+            <span id="test-status-badge" class="badge">Idle</span>
+          </div>
+          <div id="test-summary-box" class="summary-box hidden">
+            <!-- Test summary stats -->
+          </div>
+          <div id="test-exchanges-container" class="exchanges-container">
+            <div class="empty-state">Run a test to inspect the full request/response exchange history.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: REGISTER BOT -->
+    <section id="tab-register" class="tab-content">
+      <div class="content-header">
+        <div>
+          <h2>Register a New Bot</h2>
+          <p>Register your bot endpoint to start playing in live competitive tables.</p>
+        </div>
+      </div>
+
+      <div class="register-layout">
+        <div class="card-panel form-card">
+          <form id="form-register-bot">
+            <div class="form-group">
+              <label for="reg-name">Bot Name</label>
+              <input type="text" id="reg-name" placeholder="e.g. DeepHoldem_v1" required>
+            </div>
+            <div class="form-group">
+              <label for="reg-webhook">Webhook URL</label>
+              <input type="url" id="reg-webhook" placeholder="https://my-server.com/bot/action" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Register Bot & Generate API Key</button>
+          </form>
+        </div>
+
+        <div class="card-panel" id="reg-success-panel" style="display: none;">
+          <div class="alert-success">
+            <h3>🎉 Bot Registered Successfully!</h3>
+            <p>Save your API key securely. It is required to update your bot settings.</p>
+            <div class="key-box">
+              <label>Bot ID:</label>
+              <code id="reg-res-botid"></code>
+            </div>
+            <div class="key-box">
+              <label>API Key:</label>
+              <code id="reg-res-apikey"></code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ERROR LOGS -->
+    <section id="tab-errors" class="tab-content">
+      <div class="content-header">
+        <div>
+          <h2>Bot Error & Timeout Logs</h2>
+          <p>All 2-second timeouts, malformed JSON, and illegal actions are logged here to help developers debug.</p>
+        </div>
+        <button id="btn-refresh-errors" class="btn btn-secondary">Refresh Logs</button>
+      </div>
+
+      <div class="card-panel">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Bot</th>
+                <th>Hand ID</th>
+                <th>Stage</th>
+                <th>Error Type</th>
+                <th>Message</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="errors-tbody">
+              <tr><td colspan="7" class="text-center">Loading error logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

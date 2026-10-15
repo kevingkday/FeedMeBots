@@ -1,0 +1,87 @@
+{
+  "version": "v1",
+  "gameId": "tbl_01J8K3A89XYZ",
+  "handId": "hnd_01J8K3B78ABC",
+  "seatIndex": 2,
+  "dealerSeat": 0,
+  "smallBlindSeat": 1,
+  "bigBlindSeat": 2,
+  "smallBlind": 50,
+  "bigBlind": 100,
+  "stage": "preflop",
+  "communityCards": [],
+  "holeCards": ["As", "Kd"],
+  "pot": 150,
+  "sidePots": [
+    {
+      "amount": 150,
+      "eligibleSeats": [0, 1, 2, 3, 4, 5]
+    }
+  ],
+  "toCall": 0,
+  "minRaiseTo": 200,
+  "maxRaiseTo": 10000,
+  "legalActions": [
+    { "action": "check" },
+    { "action": "raise", "minAmount": 200, "maxAmount": 10000 }
+  ],
+  "seats": [
+    {
+      "seatIndex": 0,
+      "botId": "bot_dealer",
+      "botName": "DealerBot",
+      "stack": 10000,
+      "currentBet": 0,
+      "status": "active"
+    },
+    {
+      "seatIndex": 1,
+      "botId": "bot_sb",
+      "botName": "SmallBlindBot",
+      "stack": 9950,
+      "currentBet": 50,
+      "status": "active"
+    },
+    {
+      "seatIndex": 2,
+      "botId": "bot_hero",
+      "botName": "HeroBot",
+      "stack": 9900,
+      "currentBet": 100,
+      "status": "active"
+    },
+    {
+      "seatIndex": 3,
+      "botId": "bot_utg",
+      "botName": "FoldyBot",
+      "stack": 10000,
+      "currentBet": 0,
+      "status": "folded"
+    },
+    {
+      "seatIndex": 4,
+      "botId": "bot_mp",
+      "botName": "RandomStation",
+      "stack": 9900,
+      "currentBet": 100,
+      "status": "active"
+    },
+    {
+      "seatIndex": 5,
+      "botId": "bot_co",
+      "botName": "CallingMachine",
+      "stack": 9900,
+      "currentBet": 100,
+      "status": "active"
+    }
+  ],
+  "actionHistory": [
+    { "stage": "preflop", "seatIndex": 1, "action": "post_sb", "amount": 50 },
+    { "stage": "preflop", "seatIndex": 2, "action": "post_bb", "amount": 100 },
+    { "stage": "preflop", "seatIndex": 3, "action": "fold" },
+    { "stage": "preflop", "seatIndex": 4, "action": "call", "amount": 100 },
+    { "stage": "preflop", "seatIndex": 5, "action": "call", "amount": 100 },
+    { "stage": "preflop", "seatIndex": 0, "action": "fold" },
+    { "stage": "preflop", "seatIndex": 1, "action": "call", "amount": 50 }
+  ]
+}

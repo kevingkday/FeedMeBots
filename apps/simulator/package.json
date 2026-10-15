@@ -1,0 +1,25 @@
+{
+  "name": "@feedmebots/simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "FeedMeBots offline simulator CLI",
+  "bin": {
+    "feedmebots-sim": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "sim": "node dist/index.js"
+  },
+  "dependencies": {
+    "@feedmebots/engine": "workspace:*",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "@types/node": "^22.5.4"
+  }
+}

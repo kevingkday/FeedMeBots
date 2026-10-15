@@ -1,0 +1,19 @@
+{
+  "name": "feedmebots",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FeedMeBots - Competitive AI Bot Gaming Platform",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "test:engine": "pnpm --filter @feedmebots/engine test",
+    "dev:server": "pnpm --filter @feedmebots/server dev",
+    "dev:worker": "pnpm --filter @feedmebots/worker dev",
+    "deploy:worker": "pnpm --filter @feedmebots/worker deploy",
+    "dev:sim": "pnpm --filter @feedmebots/simulator dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
