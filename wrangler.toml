@@ -14,7 +14,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "feedmebots-db"
-database_id = "feedmebots-local-db"
+database_id = "309b745d-87eb-4073-850b-9442193d18ea"
 migrations_dir = "apps/worker/migrations"
 
 # Cloudflare Durable Objects for Real-Time Table Coordination
