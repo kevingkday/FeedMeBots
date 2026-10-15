@@ -22,4 +22,4 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["TableDurableObject"]
+new_sqlite_classes = ["TableDurableObject"]
