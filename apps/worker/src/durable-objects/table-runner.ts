@@ -8,7 +8,7 @@ import {
   PlayerGameStateV1,
   PokerEngine,
   PRNG
-} from '@feedmebots/engine';
+} from '../../../../packages/engine/src/index.ts';
 
 export interface Env {
   DB: D1Database;

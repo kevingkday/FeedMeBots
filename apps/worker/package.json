@@ -13,7 +13,6 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@feedmebots/engine": "workspace:*",
     "hono": "^4.6.4"
   },
   "devDependencies": {

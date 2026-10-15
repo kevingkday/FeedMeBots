@@ -76,9 +76,6 @@ importers:
 
   apps/worker:
     dependencies:
-      '@feedmebots/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
       hono:
         specifier: ^4.6.4
         version: 4.13.13
