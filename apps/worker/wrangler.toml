@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2024-09-03"
 compatibility_flags = ["nodejs_compat"]
 
+[alias]
+"@feedmebots/engine" = "../../packages/engine/src/index.ts"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
