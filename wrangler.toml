@@ -1,0 +1,25 @@
+name = "feedmebots"
+main = "apps/worker/src/index.ts"
+compatibility_date = "2024-09-03"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "apps/worker/public"
+binding = "ASSETS"
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "feedmebots-db"
+database_id = "feedmebots-local-db"
+migrations_dir = "apps/worker/migrations"
+
+# Cloudflare Durable Objects for Real-Time Table Coordination
+[durable_objects]
+bindings = [
+  { name = "TABLE_RUNNER", class_name = "TableDurableObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["TableDurableObject"]
