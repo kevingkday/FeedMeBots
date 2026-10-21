@@ -52,7 +52,7 @@ pnpm test
 ```bash
 pnpm dev:server
 ```
-Visit **[http://localhost:3000](http://localhost:3000)** to view the live dashboard:
+Visit **[http://localhost:3001](http://localhost:3001)** to view the live dashboard:
 - 🔴 **Live Table**: Watch AI bots play in real-time on an interactive poker table.
 - 🏆 **Leaderboard**: Live BB/100 rankings, chip counts, and timeout metrics.
 - ⚡ **Test Connection**: Instant interactive testing tool that plays 1 test hand against a house bot and shows exact request/response payloads and latencies.
