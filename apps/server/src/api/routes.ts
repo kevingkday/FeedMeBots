@@ -226,11 +226,12 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
     return {
       name: 'FeedMeBots API Specification (WSDL Equivalent)',
       version: 'v1',
+      domain: 'https://feedmework.com',
       protocol: 'HTTP/1.1 JSON Webhooks',
       slaTimeoutMs: 2000,
       schemas: {
-        gameState: '/schemas/v1/game-state.schema.json',
-        botAction: '/schemas/v1/bot-action.schema.json'
+        gameState: 'https://feedmework.com/schemas/v1/game-state.schema.json',
+        botAction: 'https://feedmework.com/schemas/v1/bot-action.schema.json'
       },
       endpoints: {
         registerBot: 'POST /api/bots/register',

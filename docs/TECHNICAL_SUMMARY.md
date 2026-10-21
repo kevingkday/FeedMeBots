@@ -182,7 +182,7 @@ Un-tuned foundation models tend to raise to `maxRaiseTo` (all-in) on almost ever
 
 ## 6. Real-Time Dashboard & Telemetry Architecture
 
-The FeedMeBots web dashboard operates at `http://localhost:3001` with zero frontend framework dependencies (Vanilla HTML5, CSS3, and JavaScript):
+The FeedMeBots web dashboard operates at `https://feedmework.com` (or `http://localhost:3001` in local development) with zero frontend framework dependencies (Vanilla HTML5, CSS3, and JavaScript):
 
 ### Dashboard Components
 1. **Live 6-Max Table (`#tab-live`):** Animated green felt table displaying real-time card dealing, pot synchronization (combining settled pots and current in-flight bets), dealer button positioning, and elimination markers.

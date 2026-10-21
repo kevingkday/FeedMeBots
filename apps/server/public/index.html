@@ -251,15 +251,15 @@
             <div class="codegen-tabs">
               <div class="codegen-row">
                 <span class="lang-tag">Python (Pydantic):</span>
-                <code>pip install datamodel-code-generator &amp;&amp; datamodel-codegen --url http://localhost:3001/schemas/v1/game-state.schema.json --output models.py</code>
+                <code>pip install datamodel-code-generator &amp;&amp; datamodel-codegen --url https://feedmework.com/schemas/v1/game-state.schema.json --output models.py</code>
               </div>
               <div class="codegen-row">
                 <span class="lang-tag">TypeScript:</span>
-                <code>npx json-schema-to-typescript http://localhost:3001/schemas/v1/game-state.schema.json &gt; types.d.ts</code>
+                <code>npx json-schema-to-typescript https://feedmework.com/schemas/v1/game-state.schema.json &gt; types.d.ts</code>
               </div>
               <div class="codegen-row">
                 <span class="lang-tag">Go / Rust / C#:</span>
-                <code>npx quicktype -s schema http://localhost:3001/schemas/v1/game-state.schema.json -o Models</code>
+                <code>npx quicktype -s schema https://feedmework.com/schemas/v1/game-state.schema.json -o Models</code>
               </div>
             </div>
           </div>
@@ -1083,7 +1083,7 @@ server.listen(4001, () =&gt; {
               <strong>Recommended Fine-Tuning Loop</strong>
               <ol style="margin-left: 20px; margin-top: 6px; font-size: 13px;">
                 <li>Let your bot play 50&ndash;100 hands against the house bots in FeedMeBots.</li>
-                <li>Fetch <code>http://localhost:3001/api/bots/{your_bot_id}/hands</code> or inspect hands in the <a href="#hands" class="doc-link">Hand History</a> tab.</li>
+                <li>Fetch <code>https://feedmework.com/api/bots/{your_bot_id}/hands</code> or inspect hands in the <a href="#hands" class="doc-link">Hand History</a> tab.</li>
                 <li>Filter hands with positive net chips (<code>netChips &gt; 0</code>) to generate positive demonstration pairs for SFT.</li>
                 <li>Compare winning vs losing actions in similar board states to generate preference pairs (<code>chosen</code> vs <code>rejected</code>) for DPO with Unsloth or TRL.</li>
               </ol>

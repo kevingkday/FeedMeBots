@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://feedmebots.com/schemas/v1/game-state.json",
+  "$id": "https://feedmework.com/schemas/v1/game-state.schema.json",
   "title": "FeedMeBotsGameStateV1",
   "description": "Per-player game state representation delivered to a bot when action is required, or upon stage updates.",
   "type": "object",

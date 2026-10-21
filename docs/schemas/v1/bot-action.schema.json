@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://feedmebots.com/schemas/v1/bot-action.json",
+  "$id": "https://feedmework.com/schemas/v1/bot-action.schema.json",
   "title": "FeedMeBotsActionV1",
   "description": "Payload returned by a bot's webhook endpoint in response to a game state prompt.",
   "type": "object",
