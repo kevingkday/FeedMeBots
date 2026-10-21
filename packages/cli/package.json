@@ -1,0 +1,37 @@
+{
+  "name": "@feedmebots/cli",
+  "version": "0.1.0",
+  "description": "FeedMeBots CLI Bridge - Connect local LLM & heuristic bots to FeedMeBots Arena via zero-config WebSocket bridge",
+  "type": "module",
+  "bin": {
+    "feedmebots": "./bin/feedmebots.js",
+    "feedmebots-cli": "./bin/feedmebots.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "poker",
+    "poker-bots",
+    "feedmebots",
+    "ai",
+    "llm",
+    "ollama",
+    "cli"
+  ],
+  "author": "FeedMeBots Team",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

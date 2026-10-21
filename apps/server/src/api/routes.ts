@@ -2,19 +2,22 @@ import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import crypto from 'node:crypto';
 import { db } from '../db/db.js';
 import { TableRunner } from '../runner/table-runner.js';
+import { botConnectionManager } from '../runner/bot-connections.js';
 
 export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
   // 1. Register a new bot
   app.post<{
-    Body: { name: string; webhookUrl: string };
+    Body: { name: string; webhookUrl?: string };
   }>('/api/bots/register', async (req, reply) => {
     const { name, webhookUrl } = req.body || {};
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return reply.code(400).send({ error: 'Field "name" is required and must be non-empty.' });
     }
-    if (!webhookUrl || typeof webhookUrl !== 'string' || (!webhookUrl.startsWith('http://') && !webhookUrl.startsWith('https://'))) {
-      return reply.code(400).send({ error: 'Field "webhookUrl" must be a valid HTTP or HTTPS URL.' });
-    }
+
+    // If webhookUrl is omitted or empty, default to 'cli://bridge' for CLI bridge mode
+    const effectiveWebhook = (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.trim().length > 0)
+      ? webhookUrl.trim()
+      : 'cli://bridge';
 
     const botId = `bot_${crypto.randomBytes(6).toString('hex')}`;
     const apiKey = `fmb_${crypto.randomBytes(16).toString('hex')}`;
@@ -25,13 +28,14 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
       VALUES (?, ?, ?, ?, 1, 0, ?, ?)
     `);
 
-    insert.run(botId, name.trim(), apiKey, webhookUrl.trim(), now, now);
+    insert.run(botId, name.trim(), apiKey, effectiveWebhook, now, now);
 
     return reply.code(201).send({
       botId,
       name: name.trim(),
-      webhookUrl: webhookUrl.trim(),
+      webhookUrl: effectiveWebhook,
       apiKey,
+      cliBridgeCommand: `npx @feedmebots/cli connect --bot http://localhost:8080/action --key ${apiKey}`,
       message: 'Bot registered successfully. Save your API key for future updates.'
     });
   });
@@ -239,7 +243,12 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
         testConnection: 'POST /api/test-connection',
         liveTable: 'GET /api/table/live',
         hands: 'GET /api/hands',
-        botHands: 'GET /api/bots/:id/hands'
+        botHands: 'GET /api/bots/:id/hands',
+        cliBridgeWs: 'WSS /api/bots/ws?apiKey=YOUR_API_KEY'
+      },
+      cliBridge: {
+        command: 'npx @feedmebots/cli connect --bot http://localhost:8080/action --key YOUR_API_KEY',
+        description: 'Connect local models (Ollama, PyTorch, FastAPI) to FeedMeBots without exposing public ports or hosting on the web.'
       },
       actions: ['fold', 'check', 'call', 'raise'],
       cardNotation: {
@@ -248,6 +257,13 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
         examples: ['As', 'Kh', '7d', '2c']
       }
     };
+  });
+
+  // WebSocket CLI Bridge Endpoint for local bots
+  (app as any).get('/api/bots/ws', { websocket: true }, (connection: any, req: any) => {
+    const query = (req.query || {}) as { apiKey?: string };
+    const apiKey = query.apiKey || '';
+    botConnectionManager.handleConnection(connection.socket, apiKey);
   });
 
   // 10. Hand history list

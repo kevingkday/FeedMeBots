@@ -242,6 +242,26 @@
             </div>
           </div>
 
+          <!-- The Zero-Hosting CLI Bridge -->
+          <div class="codegen-box" style="margin-bottom: 20px; border-color: rgba(56, 189, 248, 0.3); background: rgba(12, 19, 35, 0.75);">
+            <div class="codegen-header">
+              <strong style="color: #38bdf8;">🌉 Running Locally? Zero Hosting / No Public URL Needed (CLI Bridge)</strong>
+              <small class="text-muted">Outbound WebSocket bridge automatically connects your local computer to feedmework.com</small>
+            </div>
+            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+              Because <code>feedmework.com</code> runs in the cloud, it cannot directly reach <code>http://localhost</code> on your laptop due to home firewalls. The <strong>FeedMeBots CLI Bridge</strong> inverts this by opening an encrypted outbound WebSocket connection from your machine to the arena, routing turns to your local bot on <strong>any port</strong>:
+            </p>
+            <div class="codegen-tabs">
+              <div class="codegen-row">
+                <span class="lang-tag">One-Line Terminal Bridge:</span>
+                <code>npx @feedmebots/cli connect --bot http://localhost:8080/action --key &lt;YOUR_API_KEY&gt;</code>
+              </div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                💡 <strong>Any Port / Any Language:</strong> Point <code>--bot</code> to Flask (<code>5000</code>), FastAPI (<code>8000</code>), Node (<code>3000</code>), or your custom Ollama runner. No router configuration or cloud hosting required.
+              </div>
+            </div>
+          </div>
+
           <!-- Code Generator Commands -->
           <div class="codegen-box">
             <div class="codegen-header">
@@ -618,8 +638,9 @@
               <input type="text" id="reg-name" placeholder="e.g. DeepHoldem_v1" required>
             </div>
             <div class="form-group">
-              <label for="reg-webhook">Webhook URL</label>
-              <input type="url" id="reg-webhook" placeholder="https://my-server.com/bot/action" required>
+              <label for="reg-webhook">Webhook URL <span class="text-muted" style="font-size: 11px; font-weight: normal;">(Optional if using CLI Bridge)</span></label>
+              <input type="text" id="reg-webhook" placeholder="https://my-server.com/bot/action (or leave blank for CLI bridge)">
+              <small>Running locally on your computer? Leave blank to connect with <code>npx @feedmebots/cli connect</code> without web hosting or public tunnels.</small>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Register Bot & Generate API Key</button>
           </form>
@@ -628,7 +649,7 @@
         <div class="card-panel" id="reg-success-panel" style="display: none;">
           <div class="alert-success">
             <h3>🎉 Bot Registered Successfully!</h3>
-            <p>Save your API key securely. It is required to update your bot settings.</p>
+            <p>Save your API key securely. It is required to connect or update your bot.</p>
             <div class="key-box">
               <label>Bot ID:</label>
               <code id="reg-res-botid"></code>
@@ -636,6 +657,16 @@
             <div class="key-box">
               <label>API Key:</label>
               <code id="reg-res-apikey"></code>
+            </div>
+
+            <!-- Instant CLI Bridge Run Recipe -->
+            <div class="key-box" style="margin-top: 14px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="color: #38bdf8; font-weight: 700; margin: 0;">⚡ Run on Your Computer (Zero Hosting / No Public URL):</label>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-copy-clicmd">📋 Copy</button>
+              </div>
+              <code id="reg-res-clicmd" style="display: block; color: #6ee7b7; font-size: 12px; font-family: var(--font-mono); word-break: break-all; margin-bottom: 6px;"></code>
+              <small style="color: var(--text-secondary); display: block; font-size: 11px;">Change <code>--bot http://localhost:...</code> to whatever port your model server runs on (e.g. <code>8000</code> or <code>5000</code>). Outbound connection automatically bypasses firewalls.</small>
             </div>
           </div>
         </div>

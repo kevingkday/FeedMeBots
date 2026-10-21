@@ -11,6 +11,7 @@ import {
 } from '@feedmebots/engine';
 import { db } from '../db/db.js';
 import { dispatchWebhookAction, logBotError } from './dispatcher.js';
+import { botConnectionManager } from './bot-connections.js';
 
 export interface TableBot {
   id: string;
@@ -120,24 +121,54 @@ export class TableRunner {
   }
 
   private assembleSeats(): TableBot[] {
-    // 1. Fetch active registered user bots
-    const userBots = db.prepare(`
-      SELECT id, name, webhook_url FROM bots 
-      WHERE is_active = 1 AND is_house = 0
-      ORDER BY RANDOM()
-      LIMIT 4
-    `).all() as Array<{ id: string; name: string; webhook_url: string }>;
-
+    // 1. Fetch active registered user bots (prioritizing actively connected CLI Bridge bots!)
+    const connectedIds = botConnectionManager.getConnectedBotIds();
     const seats: TableBot[] = [];
 
-    for (const ub of userBots) {
-      seats.push({
-        id: ub.id,
-        name: ub.name,
-        isHouse: false,
-        webhookUrl: ub.webhook_url,
-        stack: 10000
-      });
+    // Prioritize bots that currently have an active CLI bridge connection
+    if (connectedIds.length > 0) {
+      const placeholders = connectedIds.map(() => '?').join(',');
+      const connectedBots = db.prepare(`
+        SELECT id, name, webhook_url FROM bots
+        WHERE id IN (${placeholders}) AND is_active = 1
+        LIMIT 4
+      `).all(...connectedIds) as Array<{ id: string; name: string; webhook_url: string }>;
+
+      for (const cb of connectedBots) {
+        seats.push({
+          id: cb.id,
+          name: cb.name,
+          isHouse: false,
+          webhookUrl: cb.webhook_url,
+          stack: 10000
+        });
+      }
+    }
+
+    // Fill remaining user slots (up to 4 user bots total) with random registered bots
+    if (seats.length < 4) {
+      const existingIds = seats.map(s => s.id);
+      const notInClause = existingIds.length > 0 
+        ? `AND id NOT IN (${existingIds.map(() => '?').join(',')})`
+        : '';
+      const limit = 4 - seats.length;
+
+      const userBots = db.prepare(`
+        SELECT id, name, webhook_url FROM bots 
+        WHERE is_active = 1 AND is_house = 0 ${notInClause}
+        ORDER BY RANDOM()
+        LIMIT ?
+      `).all(...existingIds, limit) as Array<{ id: string; name: string; webhook_url: string }>;
+
+      for (const ub of userBots) {
+        seats.push({
+          id: ub.id,
+          name: ub.name,
+          isHouse: false,
+          webhookUrl: ub.webhook_url,
+          stack: 10000
+        });
+      }
     }
 
     // 2. Fill remaining seats with house bots to reach 6 seats
@@ -268,7 +299,16 @@ export class TableRunner {
         // Human-friendly visual delay so spectator sees whose turn it is
         await new Promise(r => setTimeout(r, 450));
         action = bot.localFn(playerView);
-      } else if (bot.webhookUrl) {
+      } else if (botConnectionManager.has(bot.id)) {
+        // Dispatched via active WebSocket CLI Bridge (zero public URL needed!)
+        const dispatch = await botConnectionManager.dispatchAction(bot.id, playerView, 2000);
+        if (dispatch.success && dispatch.action) {
+          action = dispatch.action;
+        } else {
+          const canCheck = playerView.legalActions.some(a => a.action === 'check');
+          action = canCheck ? { action: 'check' } : { action: 'fold' };
+        }
+      } else if (bot.webhookUrl && !bot.webhookUrl.startsWith('cli://')) {
         // Dispatched webhook with 2s timeout
         const dispatch = await dispatchWebhookAction(bot.id, bot.webhookUrl, playerView, 2000);
         if (dispatch.success && dispatch.action) {

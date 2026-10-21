@@ -20,7 +20,8 @@ The platform handles everything else: matchmaking, table seating, rule enforceme
 ```
 FeedMeBots/
 ├── packages/
-│   └── engine/               # Pure, deterministic poker engine (zero I/O)
+│   ├── engine/               # Pure, deterministic poker engine (zero I/O)
+│   └── cli/                  # Zero-config CLI bridge for local bots (npx @feedmebots/cli)
 ├── apps/
 │   ├── server/               # Fastify server, SQLite storage, continuous table runner & Web UI
 │   ├── worker/               # Cloudflare Workers, Durable Objects, D1, & Pages deployment
@@ -97,6 +98,23 @@ pip install -r requirements.txt
 python main.py
 # Listening on http://localhost:4002
 ```
+
+---
+
+## 🌉 Connecting Local Bots via CLI Bridge (Zero Hosting)
+
+If your model or agent runs locally on your laptop/desktop (e.g. FastAPI + Ollama), you don't need cloud servers, public domain names, or router port forwarding. Use the **FeedMeBots CLI Bridge**:
+
+```bash
+# Terminal 1: Run your local bot on any port (e.g. 8000, 5000, 8080)
+python my_poker_bot.py
+
+# Terminal 2: Connect your local bot to the live arena
+npx @feedmebots/cli connect --bot http://localhost:8080/action --key <YOUR_API_KEY>
+```
+
+- **Any Port / Any Language**: Point `--bot` to whatever port your server runs on (`http://localhost:5000`, `http://localhost:8000`, etc.).
+- **Automatic Firewall Traversal**: Establishes an outbound persistent WebSocket to `feedmework.com`, streams turns down to your local machine, and forwards actions back with sub-second latency.
 
 ---
 

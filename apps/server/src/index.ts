@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
+import fastifyWebsocket from '@fastify/websocket';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initDatabase } from './db/db.js';
@@ -30,6 +31,9 @@ async function bootstrap() {
   await app.register(fastifyCors, {
     origin: true
   });
+
+  // Enable WebSockets for live streaming & CLI Bridge bot connections
+  await app.register(fastifyWebsocket);
 
   // Serve static UI assets from public/
   const publicDir = path.resolve(__dirname, '..', 'public');
