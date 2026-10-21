@@ -214,6 +214,45 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
     };
   });
 
+  // 10b. Per-bot hand history telemetry (for analysis and fine-tuning review)
+  app.get<{
+    Params: { id: string };
+    Querystring: { limit?: string };
+  }>('/api/bots/:id/hands', async (req) => {
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit || '50', 10), 100);
+
+    const hands = db.prepare(`
+      SELECT 
+        h.id, h.game_id, h.small_blind, h.big_blind, h.community_cards, h.winners, h.total_pot, h.action_history, h.created_at,
+        hp.seat_index, hp.starting_stack, hp.final_stack, hp.net_chips, hp.hole_cards, hp.rank_description
+      FROM hand_players hp
+      JOIN hands h ON h.id = hp.hand_id
+      WHERE hp.bot_id = ?
+      ORDER BY h.created_at DESC
+      LIMIT ?
+    `).all(id, limit) as any[];
+
+    return {
+      botId: id,
+      totalHands: hands.length,
+      hands: hands.map(h => ({
+        handId: h.id,
+        gameId: h.game_id,
+        netChips: h.net_chips,
+        startingStack: h.starting_stack,
+        finalStack: h.final_stack,
+        holeCards: h.hole_cards ? JSON.parse(h.hole_cards) : null,
+        rankDescription: h.rank_description,
+        communityCards: JSON.parse(h.community_cards),
+        totalPot: h.total_pot,
+        actionHistory: JSON.parse(h.action_history),
+        winners: JSON.parse(h.winners),
+        timestamp: h.created_at
+      }))
+    };
+  });
+
   // 11. Single hand detail
   app.get<{
     Params: { id: string };
