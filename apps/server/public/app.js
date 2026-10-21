@@ -143,6 +143,28 @@ function setupLiveTable() {
     }
   });
 
+  // Home Hero Banner Minimize/Expand
+  const heroCard = document.getElementById('home-hero-card');
+  const toggleHeroBtn = document.getElementById('btn-toggle-hero');
+  const heroToggleLabel = document.getElementById('hero-toggle-label');
+  const heroToggleArrow = document.getElementById('hero-toggle-arrow');
+
+  if (heroCard && toggleHeroBtn) {
+    const isHeroHidden = localStorage.getItem('hideHomeHero') === 'true';
+    if (isHeroHidden) {
+      heroCard.classList.add('collapsed');
+      if (heroToggleLabel) heroToggleLabel.textContent = 'Show Intro';
+      if (heroToggleArrow) heroToggleArrow.textContent = '▼';
+    }
+
+    toggleHeroBtn.addEventListener('click', () => {
+      const isNowCollapsed = heroCard.classList.toggle('collapsed');
+      if (heroToggleLabel) heroToggleLabel.textContent = isNowCollapsed ? 'Show Intro' : 'Minimize Banner';
+      if (heroToggleArrow) heroToggleArrow.textContent = isNowCollapsed ? '▼' : '▲';
+      localStorage.setItem('hideHomeHero', isNowCollapsed);
+    });
+  }
+
   // Start polling live table
   pollLiveTable();
   pollInterval = setInterval(pollLiveTable, 700);
@@ -237,7 +259,7 @@ function renderTableState(state) {
     seatDiv.innerHTML = `
       ${isDealer && !isBusted ? '<div class="dealer-button">D</div>' : ''}
       <div class="seat-avatar" style="${isBusted ? 'opacity: 0.4;' : ''}">
-        <div class="seat-name">${escapeHtml(seat.botName || `Bot ${seat.seatIndex}`)}</div>
+        <div class="seat-name"><span class="seat-robot-icon">🤖</span>${escapeHtml(seat.botName || `Bot ${seat.seatIndex}`)}</div>
         <div class="seat-chips">${isBusted ? '<span style="color: #ef4444; font-weight: 700;">ELIMINATED</span>' : (seat.stack || 0).toLocaleString()}</div>
       </div>
       <div class="seat-cards" id="seat-cards-${seat.seatIndex}"></div>
