@@ -25,6 +25,11 @@
       </div>
       <div class="header-controls">
         <div class="header-quick-links">
+          <a href="/contract" class="quick-link-pill" id="quick-link-contract" title="Developer Cheat Sheet & Schema Specification">
+            <span class="pill-icon">📋</span>
+            <span>API Contract</span>
+            <span class="pill-badge">WSDL / JSON</span>
+          </a>
           <a href="/hands" class="quick-link-pill" id="quick-link-hands" title="View Recent Hand Histories & Replay">
             <span class="pill-icon">📜</span>
             <span>Hand History</span>
@@ -48,6 +53,9 @@
     <nav class="nav-tabs">
       <button class="nav-tab active" data-tab="tab-live" id="nav-tab-live">
         <span class="tab-icon">🔴</span> Live Table
+      </button>
+      <button class="nav-tab" data-tab="tab-contract" id="nav-tab-contract">
+        <span class="tab-icon">📋</span> API Contract
       </button>
       <button class="nav-tab" data-tab="tab-hands" id="nav-tab-hands">
         <span class="tab-icon">📜</span> Hand History
@@ -119,7 +127,10 @@
             <a href="#howitworks" class="btn btn-primary btn-cta">
               🚀 How to Build Your Bot (Quickstart)
             </a>
-            <a href="#testbench" class="btn btn-secondary btn-cta">
+            <a href="#contract" class="btn btn-secondary btn-cta">
+              📋 API Contract (Schemas)
+            </a>
+            <a href="#testbench" class="btn btn-outline btn-cta">
               ⚡ Test Your Bot Endpoint
             </a>
             <a href="#register" class="btn btn-outline btn-cta">
@@ -177,6 +188,268 @@
         </aside>
       </div>
     </main>
+
+    <!-- TAB 2: DEVELOPER API CONTRACT & CHEAT SHEET -->
+    <section id="tab-contract" class="tab-content">
+      <div class="content-header">
+        <div>
+          <h2>Developer API Contract &amp; Specification</h2>
+          <p>The formal machine-readable specification, card encodings, schema definitions, and code-generator commands (WSDL &amp; UDDI Equivalent).</p>
+        </div>
+        <div class="header-actions">
+          <a href="/schemas/v1/game-state.schema.json" target="_blank" class="btn btn-outline btn-sm">📥 game-state.schema.json</a>
+          <a href="/schemas/v1/bot-action.schema.json" target="_blank" class="btn btn-outline btn-sm">📥 bot-action.schema.json</a>
+          <a href="/api/spec" target="_blank" class="btn btn-secondary btn-sm">📡 GET /api/spec</a>
+        </div>
+      </div>
+
+      <div class="docs-container">
+        <!-- 1. The Modern WSDL & UDDI Concept Card -->
+        <div class="card-panel docs-panel">
+          <div class="contract-hero-row">
+            <div>
+              <span class="formula-tag">FORMAL INTERFACE SPECIFICATION</span>
+              <h3>The Modern "WSDL &amp; UDDI" Contract</h3>
+              <p class="panel-subtitle">
+                In legacy enterprise architectures, <strong>WSDL</strong> defined the formal data contract and <strong>UDDI</strong> acted as the service discovery registry. In FeedMeBots, this is standardized using <strong>Draft-07 JSON Schema</strong> and the <strong>Bot Registry API</strong>:
+              </p>
+            </div>
+          </div>
+
+          <div class="contract-grid-two">
+            <div class="contract-box">
+              <div class="cb-header">
+                <span class="cb-icon">📄</span>
+                <strong>The "WSDL" Equivalent: JSON Schemas</strong>
+              </div>
+              <p>Formally defines every field, type constraint, required property, and enum for table states and bot responses. Fully compatible with automated code generators.</p>
+              <div class="cb-links">
+                <a href="/schemas/v1/game-state.schema.json" target="_blank" class="schema-pill">🔗 game-state.schema.json</a>
+                <a href="/schemas/v1/bot-action.schema.json" target="_blank" class="schema-pill">🔗 bot-action.schema.json</a>
+              </div>
+            </div>
+
+            <div class="contract-box">
+              <div class="cb-header">
+                <span class="cb-icon">🌐</span>
+                <strong>The "UDDI" Equivalent: Bot Registry &amp; Dispatcher</strong>
+              </div>
+              <p>Your bot publishes its webhook endpoint via <code>POST /api/bots/register</code>. The FeedMeBots matchmaker discovers your endpoint and dispatches live tournament turns.</p>
+              <div class="cb-links">
+                <span class="endpoint-pill">POST /api/bots/register</span>
+                <span class="endpoint-pill">2.0s SLA Timeout</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Code Generator Commands -->
+          <div class="codegen-box">
+            <div class="codegen-header">
+              <strong>⚡ Auto-Generate Typed Models (Python, TypeScript, Go, Rust, C#)</strong>
+              <small class="text-muted">Use standard tools to compile our JSON Schema into typed classes</small>
+            </div>
+            <div class="codegen-tabs">
+              <div class="codegen-row">
+                <span class="lang-tag">Python (Pydantic):</span>
+                <code>pip install datamodel-code-generator &amp;&amp; datamodel-codegen --url http://localhost:3001/schemas/v1/game-state.schema.json --output models.py</code>
+              </div>
+              <div class="codegen-row">
+                <span class="lang-tag">TypeScript:</span>
+                <code>npx json-schema-to-typescript http://localhost:3001/schemas/v1/game-state.schema.json &gt; types.d.ts</code>
+              </div>
+              <div class="codegen-row">
+                <span class="lang-tag">Go / Rust / C#:</span>
+                <code>npx quicktype -s schema http://localhost:3001/schemas/v1/game-state.schema.json -o Models</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Standard 52-Card String Notation Matrix -->
+        <div class="card-panel docs-panel">
+          <h3>🃏 Standard 52-Card String Notation Matrix</h3>
+          <p class="panel-subtitle">Cards are encoded as concise 2-character strings: <code>[Rank][Suit]</code> (e.g. <code>As</code> = Ace of Spades, <code>Kh</code> = King of Hearts).</p>
+
+          <div class="card-matrix-grid">
+            <div class="suit-column">
+              <div class="suit-col-header black">♠ Spades ('s')</div>
+              <div class="card-badges-flow">
+                <span class="matrix-card black">As</span><span class="matrix-card black">Ks</span><span class="matrix-card black">Qs</span><span class="matrix-card black">Js</span><span class="matrix-card black">Ts</span>
+                <span class="matrix-card black">9s</span><span class="matrix-card black">8s</span><span class="matrix-card black">7s</span><span class="matrix-card black">6s</span><span class="matrix-card black">5s</span>
+                <span class="matrix-card black">4s</span><span class="matrix-card black">3s</span><span class="matrix-card black">2s</span>
+              </div>
+            </div>
+
+            <div class="suit-column">
+              <div class="suit-col-header red">♥ Hearts ('h')</div>
+              <div class="card-badges-flow">
+                <span class="matrix-card red">Ah</span><span class="matrix-card red">Kh</span><span class="matrix-card red">Qh</span><span class="matrix-card red">Jh</span><span class="matrix-card red">Th</span>
+                <span class="matrix-card red">9h</span><span class="matrix-card red">8h</span><span class="matrix-card red">7h</span><span class="matrix-card red">6h</span><span class="matrix-card red">5h</span>
+                <span class="matrix-card red">4h</span><span class="matrix-card red">3h</span><span class="matrix-card red">2h</span>
+              </div>
+            </div>
+
+            <div class="suit-column">
+              <div class="suit-col-header red">♦ Diamonds ('d')</div>
+              <div class="card-badges-flow">
+                <span class="matrix-card red">Ad</span><span class="matrix-card red">Kd</span><span class="matrix-card red">Qd</span><span class="matrix-card red">Jd</span><span class="matrix-card red">Td</span>
+                <span class="matrix-card red">9d</span><span class="matrix-card red">8d</span><span class="matrix-card red">7d</span><span class="matrix-card red">6d</span><span class="matrix-card red">5d</span>
+                <span class="matrix-card red">4d</span><span class="matrix-card red">3d</span><span class="matrix-card red">2d</span>
+              </div>
+            </div>
+
+            <div class="suit-column">
+              <div class="suit-col-header black">♣ Clubs ('c')</div>
+              <div class="card-badges-flow">
+                <span class="matrix-card black">Ac</span><span class="matrix-card black">Kc</span><span class="matrix-card black">Qc</span><span class="matrix-card black">Jc</span><span class="matrix-card black">Tc</span>
+                <span class="matrix-card black">9c</span><span class="matrix-card black">8c</span><span class="matrix-card black">7c</span><span class="matrix-card black">6c</span><span class="matrix-card black">5c</span>
+                <span class="matrix-card black">4c</span><span class="matrix-card black">3c</span><span class="matrix-card black">2c</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="callout-box info-callout" style="margin-top: 14px;">
+            <div class="callout-icon">💡</div>
+            <div>
+              <strong>Note on Hole Cards &amp; Information Hiding:</strong>
+              <p>Your bot receives its private cards in <code>holeCards</code>: <code>["As", "Kh"]</code>. Opponents' hole cards are masked as <code>null</code> until the hand reaches a showdown.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Side-by-Side Live Data Contract -->
+        <div class="card-panel docs-panel">
+          <h3>📡 The HTTP Data Contract: Request vs. Response</h3>
+          <p class="panel-subtitle">When your bot's turn arrives, FeedMeBots sends HTTP <code>POST</code> with the sanitized state. Your bot must return HTTP <code>200 OK</code> with a valid action within 2.0 seconds.</p>
+
+          <div class="contract-side-by-side">
+            <!-- Left: Request -->
+            <div class="contract-col">
+              <div class="col-title-bar">
+                <span class="http-tag post">POST</span>
+                <span>FeedMeBots &rarr; Your Bot Webhook (Request Payload)</span>
+                <button class="btn-copy-code" id="btn-copy-req-spec">Copy</button>
+              </div>
+              <pre class="code-block" id="code-req-spec"><code>{
+  "version": "v1",
+  "gameId": "match_1792595521236_1",
+  "handId": "hand_49201",
+  "stage": "flop",                  // "preflop" | "flop" | "turn" | "river"
+  "dealerSeat": 0,                   // 0-5
+  "smallBlind": 50,
+  "bigBlind": 100,
+  "communityCards": ["Ah", "Kd", "7c"], // 0, 3, 4, or 5 cards
+  "seats": [
+    {
+      "seatIndex": 0,
+      "botId": "bot_b256ddbea6d7",
+      "stack": 9850,
+      "currentBet": 0,
+      "status": "active"            // "active" | "all_in" | "folded" | "sitting_out"
+    },
+    {
+      "seatIndex": 1,
+      "botId": "bot_house_tag",
+      "stack": 9900,
+      "currentBet": 150,
+      "status": "active"
+    }
+  ],
+  "yourSeat": 0,
+  "holeCards": ["As", "Qs"],         // Your private 2 cards
+  "pots": [
+    { "amount": 300, "eligibleSeats": [0, 1] }
+  ],
+  "toCall": 150,                     // Chips needed to call (0 = check is free)
+  "minRaiseTo": 300,                 // Minimum total bet if raising
+  "maxRaiseTo": 9850,                // Maximum total bet if raising (all-in)
+  "legalActions": [
+    { "action": "fold" },
+    { "action": "call" },
+    { "action": "raise", "minRaiseTo": 300, "maxRaiseTo": 9850 }
+  ]
+}</code></pre>
+            </div>
+
+            <!-- Right: Response -->
+            <div class="contract-col">
+              <div class="col-title-bar">
+                <span class="http-tag res">200 OK</span>
+                <span>Your Bot &rarr; FeedMeBots (Action Response)</span>
+                <button class="btn-copy-code" id="btn-copy-res-spec">Copy</button>
+              </div>
+              <pre class="code-block" id="code-res-spec"><code>// Option 1: Fold hand
+{ "action": "fold" }
+
+// Option 2: Check (only legal if toCall === 0)
+{ "action": "check" }
+
+// Option 3: Call (matches toCall chips)
+{ "action": "call" }
+
+// Option 4: Raise (CRITICAL: amount is the TOTAL bet, NOT increment)
+// Must satisfy: minRaiseTo &le; amount &le; maxRaiseTo
+{ "action": "raise", "amount": 450 }</code></pre>
+
+              <div class="field-glossary">
+                <div class="glossary-item">
+                  <code>toCall</code>
+                  <span>If <code>0</code>, you can check for free. If <code>&gt; 0</code>, checking is illegal (must call, raise, or fold).</span>
+                </div>
+                <div class="glossary-item">
+                  <code>minRaiseTo</code>
+                  <span>The lowest valid integer amount you can raise to.</span>
+                </div>
+                <div class="glossary-item">
+                  <code>maxRaiseTo</code>
+                  <span>Your total stack plus current bet (effective all-in).</span>
+                </div>
+                <div class="glossary-item">
+                  <code>legalActions</code>
+                  <span>Always check this array! Returning an action not in this list results in an auto-check/fold penalty.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Terminal Testing with Curl -->
+        <div class="card-panel docs-panel">
+          <div class="code-tabs-header">
+            <h3>⚡ Test Your Bot Endpoint from the Command Line</h3>
+            <button class="btn-copy-code" id="btn-copy-curl-spec">📋 Copy Curl Command</button>
+          </div>
+          <p class="panel-subtitle">Simulate FeedMeBots sending a live FLOP game state to your local bot server at <code>http://localhost:8080/action</code>:</p>
+          <pre class="code-block" id="code-curl-spec"><code>curl -X POST http://localhost:8080/action \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": "v1",
+    "gameId": "test_match_1",
+    "handId": "test_hand_1",
+    "stage": "flop",
+    "dealerSeat": 1,
+    "smallBlind": 50,
+    "bigBlind": 100,
+    "communityCards": ["Ah", "Kd", "7c"],
+    "seats": [
+      { "seatIndex": 0, "botId": "MyBot", "stack": 9850, "currentBet": 0, "status": "active" },
+      { "seatIndex": 1, "botId": "HouseBot", "stack": 9900, "currentBet": 150, "status": "active" }
+    ],
+    "yourSeat": 0,
+    "holeCards": ["As", "Qs"],
+    "pots": [{ "amount": 300, "eligibleSeats": [0, 1] }],
+    "toCall": 150,
+    "minRaiseTo": 300,
+    "maxRaiseTo": 9850,
+    "legalActions": [
+      { "action": "fold" },
+      { "action": "call" },
+      { "action": "raise", "minRaiseTo": 300, "maxRaiseTo": 9850 }
+    ]
+  }'</code></pre>
+        </div>
+      </div>
+    </section>
 
     <!-- TAB: HAND HISTORY -->
     <section id="tab-hands" class="tab-content">

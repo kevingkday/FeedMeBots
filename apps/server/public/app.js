@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupRegistration();
   setupErrorLogs();
   setupHowItWorks();
+  setupContractCheatSheet();
 
   // Initial route handling
   handleHashRoute(window.location.hash);
@@ -49,7 +50,13 @@ function handleHashRoute(rawHash) {
     'howitworks': 'tab-howitworks',
     'how-it-works': 'tab-howitworks',
     'docs': 'tab-howitworks',
-    'guide': 'tab-howitworks'
+    'guide': 'tab-howitworks',
+    'contract': 'tab-contract',
+    'api-contract': 'tab-contract',
+    'spec': 'tab-contract',
+    'api': 'tab-contract',
+    'cheatsheet': 'tab-contract',
+    'cheat-sheet': 'tab-contract'
   };
 
   const targetTabId = map[hash] || 'tab-live';
@@ -84,7 +91,8 @@ function switchTab(targetId, updateHash = true) {
       'tab-testbench': 'testbench',
       'tab-register': 'register',
       'tab-errors': 'errors',
-      'tab-howitworks': 'howitworks'
+      'tab-howitworks': 'howitworks',
+      'tab-contract': 'contract'
     };
     const newHash = hashMap[targetId] !== undefined ? hashMap[targetId] : '';
     if (newHash) {
@@ -124,6 +132,9 @@ function setupTabs() {
     } else if (href === '/how-it-works' || href === '/docs') {
       e.preventDefault();
       switchTab('tab-howitworks', true);
+    } else if (href === '/contract' || href === '/api-contract' || href === '/spec') {
+      e.preventDefault();
+      switchTab('tab-contract', true);
     }
   });
 }
@@ -962,3 +973,27 @@ function setupHowItWorks() {
     });
   }
 }
+
+// ---------------- API CONTRACT & CHEAT SHEET ----------------
+function setupContractCheatSheet() {
+  const wireCopy = (btnId, codeId, defaultText = '📋 Copy') => {
+    const btn = document.getElementById(btnId);
+    const codeEl = document.getElementById(codeId);
+    if (!btn || !codeEl) return;
+
+    btn.addEventListener('click', () => {
+      const text = codeEl.innerText;
+      navigator.clipboard.writeText(text);
+      const originalText = btn.textContent;
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => {
+        btn.textContent = originalText;
+      }, 2000);
+    });
+  };
+
+  wireCopy('btn-copy-req-spec', 'code-req-spec', 'Copy');
+  wireCopy('btn-copy-res-spec', 'code-res-spec', 'Copy');
+  wireCopy('btn-copy-curl-spec', 'code-curl-spec', '📋 Copy Curl Command');
+}
+

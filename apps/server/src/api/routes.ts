@@ -209,6 +209,46 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
     return reply.redirect('/#howitworks');
   });
 
+  app.get('/contract', async (req, reply) => {
+    return reply.redirect('/#contract');
+  });
+
+  app.get('/api-contract', async (req, reply) => {
+    return reply.redirect('/#contract');
+  });
+
+  app.get('/spec', async (req, reply) => {
+    return reply.redirect('/#contract');
+  });
+
+  // WSDL/Schema specification metadata endpoint
+  app.get('/api/spec', async () => {
+    return {
+      name: 'FeedMeBots API Specification (WSDL Equivalent)',
+      version: 'v1',
+      protocol: 'HTTP/1.1 JSON Webhooks',
+      slaTimeoutMs: 2000,
+      schemas: {
+        gameState: '/schemas/v1/game-state.schema.json',
+        botAction: '/schemas/v1/bot-action.schema.json'
+      },
+      endpoints: {
+        registerBot: 'POST /api/bots/register',
+        updateBot: 'PUT /api/bots/:id',
+        testConnection: 'POST /api/test-connection',
+        liveTable: 'GET /api/table/live',
+        hands: 'GET /api/hands',
+        botHands: 'GET /api/bots/:id/hands'
+      },
+      actions: ['fold', 'check', 'call', 'raise'],
+      cardNotation: {
+        ranks: ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'],
+        suits: { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' },
+        examples: ['As', 'Kh', '7d', '2c']
+      }
+    };
+  });
+
   // 10. Hand history list
   app.get<{
     Querystring: { limit?: string; botId?: string };

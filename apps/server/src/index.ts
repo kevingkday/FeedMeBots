@@ -38,6 +38,14 @@ async function bootstrap() {
     prefix: '/'
   });
 
+  // Serve static JSON Schemas from docs/schemas/ (WSDL equivalent)
+  const schemasDir = path.resolve(__dirname, '..', '..', '..', 'docs', 'schemas');
+  await app.register(fastifyStatic, {
+    root: schemasDir,
+    prefix: '/schemas/',
+    decorateReply: false
+  });
+
   // Initialize SQLite database schema
   initDatabase();
   console.log('📦 Database initialized.');
