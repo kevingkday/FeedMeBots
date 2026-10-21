@@ -433,8 +433,8 @@ export class TableRunner {
 
       let action: Action;
       if (turnSeat === 0) {
-        // User webhook bot
-        const dispatch = await dispatchWebhookAction('tester_bot', webhookUrl, playerView, 2000);
+        // User webhook bot (allow 4000ms for test bench to accommodate initial LLM cold starts)
+        const dispatch = await dispatchWebhookAction('tester_bot', webhookUrl, playerView, 4000);
         exchanges.push({
           stage: state.stage,
           requestSent: playerView,
