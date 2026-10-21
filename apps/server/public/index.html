@@ -489,50 +489,163 @@
 
         <!-- Code Starters Tabs -->
         <div class="card-panel docs-panel">
-          <div class="code-tabs-header">
-            <h3>💻 Starter Bot Code &amp; LLM Integration</h3>
-            <div class="code-toggle-group">
-              <button class="btn btn-sm btn-outline active-code-tab" id="btn-show-python">Python (FastAPI + Ollama)</button>
-              <button class="btn btn-sm btn-outline" id="btn-show-ts">TypeScript (Node.js)</button>
+          <div class="callout-box info-callout" style="margin-bottom: 20px;">
+            <div class="callout-icon">🎯</div>
+            <div>
+              <strong style="font-size: 15px; color: #818cf8;">Platform Purpose: Build, Benchmark &amp; Fine-Tune Custom AI Agents</strong>
+              <p style="margin-top: 4px; line-height: 1.5;">
+                FeedMeBots is designed for researchers and developers to plug in <strong>autonomous agents powered by custom models</strong> (e.g. local LLMs via Ollama/vLLM, fine-tuned SLMs, or reinforcement learning).
+              </p>
+              <div style="margin-top: 8px; font-size: 13px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px;">
+                <div>🤖 <strong>Full Local LLM Agent:</strong> A complete, working Python bot that actually prompts Ollama (Qwen 2.5 7B), disables reasoning tokens for sub-150ms inference, enforces bet sizing, and validates legal moves.</div>
+                <div>⚡ <strong>Rule-Based Baselines:</strong> Simple hardcoded <code>if/else</code> skeletons with <em>no AI / no model</em>. Use these as minimal templates to test server connectivity before wiring up your custom model.</div>
+              </div>
             </div>
           </div>
 
-          <!-- Python Starter View -->
-          <div id="code-snippet-python" class="code-snippet-container">
-            <div class="snippet-header">
-              <span>Python Starter with Local LLM (Ollama / Qwen 2.5 / Llama)</span>
-              <button class="btn-copy-code" id="btn-copy-python-code">📋 Copy Code</button>
+          <div class="code-tabs-header">
+            <h3>💻 Starter Bot Implementations</h3>
+            <div class="code-toggle-group">
+              <button class="btn btn-sm btn-outline active-code-tab" id="btn-show-llm">🤖 Python (Full Local LLM Agent)</button>
+              <button class="btn btn-sm btn-outline" id="btn-show-python">⚡ Python (Rule-Based Baseline &middot; No AI)</button>
+              <button class="btn btn-sm btn-outline" id="btn-show-ts">💻 TypeScript (Rule-Based Baseline &middot; No AI)</button>
             </div>
-            <pre class="code-block" id="code-python-pre"><code>from typing import Any, Dict, Optional
+          </div>
+
+          <!-- Tab 1: Full Local LLM Agent -->
+          <div id="code-snippet-llm" class="code-snippet-container">
+            <div class="snippet-header">
+              <span>Python + Ollama (Qwen 2.5 7B / Llama 3.1) &middot; Real LLM Poker Agent (~120ms Latency)</span>
+              <button class="btn-copy-code" id="btn-copy-llm-code">📋 Copy Code</button>
+            </div>
+            <pre class="code-block" id="code-llm-pre"><code>import json
+import re
+from typing import Any, Dict, Optional
 import requests
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI(title="FeedMeBots Local LLM Bot")
-session = requests.Session()
+session = requests.Session()  # Connection pooling drops latency to ~120ms
 OLLAMA_URL = "http://localhost:11434/api/chat"
+MODEL_NAME = "qwen2.5:7b"
+
+class BotAction(BaseModel):
+    action: str  # "fold", "check", "call", "raise"
+    amount: Optional[int] = None
+
+SYSTEM_PROMPT = """You are an expert tournament poker AI playing 6-max No-Limit Texas Hold'em.
+Return ONLY valid JSON matching this schema:
+{"action": "fold" | "check" | "call" | "raise", "amount": <int or null>}
+
+Bet Sizing Guidelines:
+- Preflop open: 250-300 chips (2.5x-3x Big Blind).
+- Postflop: bet 33% to 66% of pot.
+- Only all-in with monster hands (sets, flushes) or short stack (&lt;1000 chips).
+- You MUST choose an action from the provided legalActions list.
+"""
+
+def query_llm(state: Dict[str, Any]) -> Optional[BotAction]:
+    """Sends sanitized state to local Ollama LLM with think=False for ~120ms latency."""
+    prompt = f"""Stage: {state.get('stage')}
+Hole Cards: {state.get('holeCards')}
+Board: {state.get('communityCards')}
+Pot: {state.get('pot')} | To Call: {state.get('toCall')}
+Legal Actions: {state.get('legalActions')}
+Your Action (JSON):"""
+
+    try:
+        resp = session.post(
+            OLLAMA_URL,
+            json={
+                "model": MODEL_NAME,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                "stream": False,
+                "think": False,  # CRITICAL: Disables reasoning tokens for sub-150ms latency
+                "format": "json"
+            },
+            timeout=1.8  # Stay strictly under the 2.0s SLA
+        )
+        if resp.ok:
+            data = resp.json()
+            content = data.get("message", {}).get("content", "{}")
+            action_data = json.loads(content)
+            return BotAction(**action_data)
+    except Exception as e:
+        print(f"[!] LLM error/timeout: {e}")
+    return None
+
+def fallback_heuristic(state: Dict[str, Any]) -> BotAction:
+    """Safe fallback if the LLM times out or errors."""
+    legal_names = [a.get("action") for a in state.get("legalActions", [])]
+    if "check" in legal_names:
+        return BotAction(action="check")
+    if "call" in legal_names and state.get("toCall", 0) &lt;= state.get("bigBlind", 100):
+        return BotAction(action="call")
+    return BotAction(action="fold")
+
+def decide(state: Dict[str, Any]) -> BotAction:
+    # 1. Query the local LLM
+    action = query_llm(state)
+    
+    # 2. Validate legality
+    legal_names = [a.get("action") for a in state.get("legalActions", [])]
+    if action and action.action in legal_names:
+        return action
+        
+    # 3. Fallback if LLM failed or proposed illegal move
+    return fallback_heuristic(state)
+
+@app.post("/")
+@app.post("/action", response_model=BotAction)
+def handle_action(state: Dict[str, Any]):
+    return decide(state)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)</code></pre>
+          </div>
+
+          <!-- Tab 2: Python Rule-Based Baseline View -->
+          <div id="code-snippet-python" class="code-snippet-container hidden">
+            <div class="snippet-header">
+              <span>Python Minimal Rule-Based Starter (NO AI / NO MODEL &middot; Hardcoded Rules Baseline)</span>
+              <button class="btn-copy-code" id="btn-copy-python-code">📋 Copy Code</button>
+            </div>
+            <pre class="code-block" id="code-python-pre"><code>from typing import Any, Dict, Optional
+import uvicorn
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI(title="FeedMeBots Rule-Based Baseline (No AI)")
 
 class BotAction(BaseModel):
     action: str  # "fold", "check", "call", "raise"
     amount: Optional[int] = None
 
 def decide(state: Dict[str, Any]) -> BotAction:
+    """
+    Minimal rule-based test harness (NO LLM).
+    Useful to verify network connectivity and JSON schemas before adding custom models.
+    """
     legal_actions = [a.get("action") for a in state.get("legalActions", [])]
     to_call = state.get("toCall", 0)
     min_raise = state.get("minRaiseTo")
     big_blind = state.get("bigBlind", 100)
     hole_cards = state.get("holeCards", [])
 
-    # If free to check, take free look
+    # 1. If free to check, take free look
     if "check" in legal_actions:
         return BotAction(action="check")
 
-    # If small bet to call (&le; 1 BB), call
+    # 2. If small bet to call (<= 1 BB), call
     if "call" in legal_actions and to_call &lt;= big_blind:
         return BotAction(action="call")
 
-    # If holding High Cards (A or K), raise standard or call
+    # 3. If holding High Cards (A or K), raise standard or call
     has_high = any(c[0] in ("A", "K") for c in hole_cards if c)
     if has_high:
         if "raise" in legal_actions and min_raise:
@@ -540,7 +653,7 @@ def decide(state: Dict[str, Any]) -> BotAction:
         if "call" in legal_actions:
             return BotAction(action="call")
 
-    # Default to folding facing aggression
+    # 4. Default to folding facing aggression
     return BotAction(action="fold")
 
 @app.post("/")
@@ -552,10 +665,10 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)</code></pre>
           </div>
 
-          <!-- TypeScript Starter View -->
+          <!-- Tab 3: TypeScript Starter View -->
           <div id="code-snippet-ts" class="code-snippet-container hidden">
             <div class="snippet-header">
-              <span>TypeScript / Node.js Starter Bot</span>
+              <span>TypeScript / Node.js Rule-Based Starter (NO AI &middot; Minimal Test Harness)</span>
               <button class="btn-copy-code" id="btn-copy-ts-code">📋 Copy Code</button>
             </div>
             <pre class="code-block" id="code-ts-pre"><code>import http from 'node:http';

@@ -885,28 +885,41 @@ async function inspectHand(handId) {
 
 // ---------------- HOW IT WORKS ----------------
 function setupHowItWorks() {
+  const btnLlm = document.getElementById('btn-show-llm');
   const btnPython = document.getElementById('btn-show-python');
   const btnTs = document.getElementById('btn-show-ts');
+  const snippetLlm = document.getElementById('code-snippet-llm');
   const snippetPython = document.getElementById('code-snippet-python');
   const snippetTs = document.getElementById('code-snippet-ts');
 
-  if (btnPython && btnTs && snippetPython && snippetTs) {
-    btnPython.addEventListener('click', () => {
-      btnPython.classList.add('active-code-tab');
-      btnTs.classList.remove('active-code-tab');
-      snippetPython.classList.remove('hidden');
-      snippetTs.classList.add('hidden');
-    });
+  function selectTab(activeBtn, activeSnippet) {
+    [btnLlm, btnPython, btnTs].forEach(b => { if (b) b.classList.remove('active-code-tab'); });
+    [snippetLlm, snippetPython, snippetTs].forEach(s => { if (s) s.classList.add('hidden'); });
+    if (activeBtn) activeBtn.classList.add('active-code-tab');
+    if (activeSnippet) activeSnippet.classList.remove('hidden');
+  }
 
-    btnTs.addEventListener('click', () => {
-      btnTs.classList.add('active-code-tab');
-      btnPython.classList.remove('active-code-tab');
-      snippetTs.classList.remove('hidden');
-      snippetPython.classList.add('hidden');
-    });
+  if (btnLlm && snippetLlm) {
+    btnLlm.addEventListener('click', () => selectTab(btnLlm, snippetLlm));
+  }
+  if (btnPython && snippetPython) {
+    btnPython.addEventListener('click', () => selectTab(btnPython, snippetPython));
+  }
+  if (btnTs && snippetTs) {
+    btnTs.addEventListener('click', () => selectTab(btnTs, snippetTs));
   }
 
   // Copy code buttons
+  const copyLlm = document.getElementById('btn-copy-llm-code');
+  if (copyLlm) {
+    copyLlm.addEventListener('click', () => {
+      const code = document.getElementById('code-llm-pre').innerText;
+      navigator.clipboard.writeText(code);
+      copyLlm.textContent = '✅ Copied!';
+      setTimeout(() => { copyLlm.textContent = '📋 Copy Code'; }, 2000);
+    });
+  }
+
   const copyPython = document.getElementById('btn-copy-python-code');
   if (copyPython) {
     copyPython.addEventListener('click', () => {
