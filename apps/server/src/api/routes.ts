@@ -196,14 +196,44 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
     return { isRunning: false };
   });
 
+  // User convenience web redirects
+  app.get('/hands', async (req, reply) => {
+    return reply.redirect('/#hands');
+  });
+
+  app.get('/how-it-works', async (req, reply) => {
+    return reply.redirect('/#howitworks');
+  });
+
+  app.get('/docs', async (req, reply) => {
+    return reply.redirect('/#howitworks');
+  });
+
   // 10. Hand history list
-  app.get('/api/hands', async () => {
-    const hands = db.prepare(`
-      SELECT id, game_id, small_blind, big_blind, community_cards, winners, total_pot, created_at
-      FROM hands
-      ORDER BY created_at DESC
-      LIMIT 25
-    `).all() as any[];
+  app.get<{
+    Querystring: { limit?: string; botId?: string };
+  }>('/api/hands', async (req) => {
+    const limit = Math.min(parseInt(req.query.limit || '25', 10), 100);
+    const botId = req.query.botId;
+
+    let hands: any[];
+    if (botId) {
+      hands = db.prepare(`
+        SELECT h.id, h.game_id, h.small_blind, h.big_blind, h.community_cards, h.winners, h.total_pot, h.created_at
+        FROM hands h
+        JOIN hand_players hp ON hp.hand_id = h.id
+        WHERE hp.bot_id = ?
+        ORDER BY h.created_at DESC
+        LIMIT ?
+      `).all(botId, limit) as any[];
+    } else {
+      hands = db.prepare(`
+        SELECT id, game_id, small_blind, big_blind, community_cards, winners, total_pot, created_at
+        FROM hands
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(limit) as any[];
+    }
 
     return {
       hands: hands.map(h => ({
