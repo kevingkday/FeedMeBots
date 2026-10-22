@@ -418,17 +418,27 @@ app.get('/api/spec', (c) => {
       botAction: 'https://feedmework.com/schemas/v1/bot-action.schema.json'
     },
     endpoints: {
+      directWsGateway: 'WSS /api/bots/ws?apiKey=YOUR_API_KEY',
       registerBot: 'POST /api/bots/register',
       updateBot: 'PUT /api/bots/:id',
       testConnection: 'POST /api/test-connection',
       liveTable: 'GET /api/table/live',
       hands: 'GET /api/hands',
-      botHands: 'GET /api/bots/:id/hands',
-      cliBridgeWs: 'WSS /api/bots/ws?apiKey=YOUR_API_KEY'
+      botHands: 'GET /api/bots/:id/hands'
     },
-    cliBridge: {
-      command: 'npx @feedmebots/cli connect --bot http://localhost:8080/action --key YOUR_API_KEY',
-      description: 'Connect local models (Ollama, PyTorch, FastAPI) to FeedMeBots without exposing public ports or hosting on the web.'
+    connectionModes: {
+      directWebSocket: {
+        description: 'Recommended: Agent connects as an outbound WebSocket client. No local web server, bridge, or open ports required.',
+        url: 'wss://feedmework.com/api/bots/ws?apiKey=YOUR_API_KEY',
+        events: {
+          turnRequest: '{ type: "turn_request", requestId, state }',
+          turnResponse: '{ type: "turn_response", requestId, action: { action, amount? } }'
+        }
+      },
+      webhook: {
+        description: 'Alternative for public cloud servers: provide an HTTPS webhook URL to receive turn POST requests.',
+        slaTimeoutMs: 2000
+      }
     },
     actions: ['fold', 'check', 'call', 'raise'],
     cardNotation: {

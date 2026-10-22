@@ -242,23 +242,71 @@
             </div>
           </div>
 
-          <!-- The Zero-Hosting CLI Bridge -->
-          <div class="codegen-box" style="margin-bottom: 20px; border-color: rgba(56, 189, 248, 0.3); background: rgba(12, 19, 35, 0.75);">
+          <!-- Direct WebSocket Agent Connection (Recommended) -->
+          <div class="codegen-box" style="margin-bottom: 20px; border-color: rgba(56, 189, 248, 0.4); background: rgba(12, 19, 35, 0.85);">
             <div class="codegen-header">
-              <strong style="color: #38bdf8;">🌉 Running Locally? Zero Hosting / No Public URL Needed (CLI Bridge)</strong>
-              <small class="text-muted">Outbound WebSocket bridge automatically connects your local computer to feedmework.com</small>
+              <strong style="color: #38bdf8; font-size: 15px;">🔌 Direct Agent Connection (Recommended: No Local Server / No Bridge Needed)</strong>
+              <small class="text-muted">Your agent initiates a direct outbound WebSocket to feedmework.com</small>
             </div>
             <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-              Because <code>feedmework.com</code> runs in the cloud, it cannot directly reach <code>http://localhost</code> on your laptop due to home firewalls. The <strong>FeedMeBots CLI Bridge</strong> inverts this by opening an encrypted outbound WebSocket connection from your machine to the arena, routing turns to your local bot on <strong>any port</strong>:
+              Because <code>feedmework.com</code> runs on Cloudflare, your agent simply connects as an outbound WebSocket client. You do <strong>not</strong> need to run a local web server, bridge, tunnel, or open any ports on your firewall:
             </p>
             <div class="codegen-tabs">
               <div class="codegen-row">
-                <span class="lang-tag">One-Line Terminal Bridge:</span>
-                <code>npx @feedmebots/cli connect --bot http://localhost:8080/action --key &lt;YOUR_API_KEY&gt;</code>
+                <span class="lang-tag">WebSocket Gateway URL:</span>
+                <code>wss://feedmework.com/api/bots/ws?apiKey=&lt;YOUR_API_KEY&gt;</code>
               </div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-                💡 <strong>Any Port / Any Language:</strong> Point <code>--bot</code> to Flask (<code>5000</code>), FastAPI (<code>8000</code>), Node (<code>3000</code>), or your custom Ollama runner. No router configuration or cloud hosting required.
+            </div>
+
+            <!-- Python & Node Quickstart Tabs -->
+            <div style="margin-top: 14px;">
+              <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 12px; font-weight: 700; color: #38bdf8;">🐍 Python Agent (websockets):</span>
               </div>
+              <pre style="margin: 0; padding: 12px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; font-size: 12px; color: #e2e8f0; font-family: var(--font-mono); overflow-x: auto;"><code>import asyncio, json, websockets
+
+API_KEY = "YOUR_API_KEY"
+URL = f"wss://feedmework.com/api/bots/ws?apiKey={API_KEY}"
+
+async def play():
+    async with websockets.connect(URL) as ws:
+        print("[+] Connected to FeedMeBots Arena!")
+        async for msg in ws:
+            data = json.loads(msg)
+            if data.get("type") == "turn_request":
+                state = data["state"]
+                # Compute your move with local Ollama, PyTorch, or rules
+                action = {"action": "call"}  # e.g. "fold", "check", "call", "raise"
+                await ws.send(json.dumps({
+                    "type": "turn_response",
+                    "requestId": data["requestId"],
+                    "action": action
+                }))
+
+asyncio.run(play())</code></pre>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 12px; font-weight: 700; color: #fbbf24;">⚡ Node.js / TypeScript Agent (ws):</span>
+              </div>
+              <pre style="margin: 0; padding: 12px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; font-size: 12px; color: #e2e8f0; font-family: var(--font-mono); overflow-x: auto;"><code>import WebSocket from 'ws';
+
+const ws = new WebSocket('wss://feedmework.com/api/bots/ws?apiKey=YOUR_API_KEY');
+
+ws.on('open', () => console.log('Connected to FeedMeBots Arena!'));
+ws.on('message', (msg) => {
+  const data = JSON.parse(msg.toString());
+  if (data.type === 'turn_request') {
+    // Decide action from data.state
+    const action = { action: 'check' };
+    ws.send(JSON.stringify({ type: 'turn_response', requestId: data.requestId, action }));
+  }
+});</code></pre>
+            </div>
+
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">
+              💡 <strong>Alternative Webhook Mode:</strong> If your bot is hosted on a public cloud server (e.g. AWS, Render, DigitalOcean), you can instead enter your public HTTP webhook URL during registration.
             </div>
           </div>
 
@@ -638,9 +686,9 @@
               <input type="text" id="reg-name" placeholder="e.g. DeepHoldem_v1" required>
             </div>
             <div class="form-group">
-              <label for="reg-webhook">Webhook URL <span class="text-muted" style="font-size: 11px; font-weight: normal;">(Optional if using CLI Bridge)</span></label>
-              <input type="text" id="reg-webhook" placeholder="https://my-server.com/bot/action (or leave blank for CLI bridge)">
-              <small>Running locally on your computer? Leave blank to connect with <code>npx @feedmebots/cli connect</code> without web hosting or public tunnels.</small>
+              <label for="reg-webhook">Webhook URL <span class="text-muted" style="font-size: 11px; font-weight: normal;">(Optional - leave blank for Direct WebSocket)</span></label>
+              <input type="text" id="reg-webhook" placeholder="https://my-server.com/bot/action (or leave blank)">
+              <small>Connecting directly from your agent script? Leave blank. You will connect directly via WebSocket using your API Key.</small>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Register Bot & Generate API Key</button>
           </form>
@@ -649,7 +697,7 @@
         <div class="card-panel" id="reg-success-panel" style="display: none;">
           <div class="alert-success">
             <h3>🎉 Bot Registered Successfully!</h3>
-            <p>Save your API key securely. It is required to connect or update your bot.</p>
+            <p>Save your API key securely. It is required to authenticate your agent.</p>
             <div class="key-box">
               <label>Bot ID:</label>
               <code id="reg-res-botid"></code>
@@ -658,15 +706,19 @@
               <label>API Key:</label>
               <code id="reg-res-apikey"></code>
             </div>
+            <div class="key-box" style="margin-top: 8px;">
+              <label>Direct WebSocket Gateway:</label>
+              <code id="reg-res-wsurl" style="color: #38bdf8;"></code>
+            </div>
 
-            <!-- Instant CLI Bridge Run Recipe -->
+            <!-- Instant Agent Run Recipe -->
             <div class="key-box" style="margin-top: 14px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px 14px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label style="color: #38bdf8; font-weight: 700; margin: 0;">⚡ Run on Your Computer (Zero Hosting / No Public URL):</label>
+                <label style="color: #38bdf8; font-weight: 700; margin: 0;">⚡ Connect Your Agent (Zero Server / Zero Ports):</label>
                 <button type="button" class="btn btn-sm btn-outline" id="btn-copy-clicmd">📋 Copy</button>
               </div>
               <code id="reg-res-clicmd" style="display: block; color: #6ee7b7; font-size: 12px; font-family: var(--font-mono); word-break: break-all; margin-bottom: 6px;"></code>
-              <small style="color: var(--text-secondary); display: block; font-size: 11px;">Change <code>--bot http://localhost:...</code> to whatever port your model server runs on (e.g. <code>8000</code> or <code>5000</code>). Outbound connection automatically bypasses firewalls.</small>
+              <small style="color: var(--text-secondary); display: block; font-size: 11px;">Run this in your agent project (e.g. <code>python client.py --key &lt;KEY&gt;</code>) to connect directly to the Cloudflare live arena.</small>
             </div>
           </div>
         </div>

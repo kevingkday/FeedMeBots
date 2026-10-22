@@ -499,18 +499,18 @@ function setupRegistration() {
       document.getElementById('reg-res-botid').textContent = data.botId;
       document.getElementById('reg-res-apikey').textContent = data.apiKey;
 
-      const serverOrigin = window.location.origin.includes('localhost') 
-        ? 'https://feedmework.com'
-        : window.location.origin;
+      const wsUrl = `wss://feedmework.com/api/bots/ws?apiKey=${data.apiKey}`;
+      const wsEl = document.getElementById('reg-res-wsurl');
+      if (wsEl) wsEl.textContent = wsUrl;
 
-      const cliCmd = `npx @feedmebots/cli connect --bot http://localhost:8080/action --key ${data.apiKey}`;
+      const runCmd = `python client.py --key ${data.apiKey}`;
       const cliEl = document.getElementById('reg-res-clicmd');
-      if (cliEl) cliEl.textContent = cliCmd;
+      if (cliEl) cliEl.textContent = runCmd;
 
       const copyBtn = document.getElementById('btn-copy-clicmd');
       if (copyBtn) {
         copyBtn.onclick = () => {
-          navigator.clipboard.writeText(cliCmd);
+          navigator.clipboard.writeText(runCmd);
           copyBtn.textContent = '✅ Copied!';
           setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
         };
