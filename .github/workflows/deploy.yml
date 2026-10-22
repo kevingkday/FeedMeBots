@@ -34,6 +34,14 @@ jobs:
       - name: Run test suite
         run: pnpm test
 
+      - name: Apply D1 migrations to remote database
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'apps/worker'
+          command: d1 migrations apply feedmebots-db --remote
+
       - name: Deploy to Cloudflare Workers & D1
         uses: cloudflare/wrangler-action@v3
         with:

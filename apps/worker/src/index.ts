@@ -128,12 +128,17 @@ app.put('/api/bots/:id', async (c) => {
 
 // 8. Bot List (D1)
 app.get('/api/bots', async (c) => {
-  const bots = await c.env.DB.prepare(`
-    SELECT id, name, is_house FROM bots
-    WHERE is_active = 1
-    ORDER BY is_house ASC, name ASC
-  `).all();
-  return c.json({ bots: bots.results || [] });
+  try {
+    const bots = await c.env.DB.prepare(`
+      SELECT id, name, is_house FROM bots
+      WHERE is_active = 1
+      ORDER BY is_house ASC, name ASC
+    `).all();
+    return c.json({ bots: bots.results || [] });
+  } catch (err: any) {
+    console.error('Error fetching bots from D1:', err);
+    return c.json({ bots: [] });
+  }
 });
 
 // 9. Hand History List (D1)
@@ -141,62 +146,71 @@ app.get('/api/hands', async (c) => {
   const limit = Math.min(parseInt(c.req.query('limit') || '25', 10), 100);
   const botId = c.req.query('botId');
 
-  let query: any;
-  if (botId) {
-    query = await c.env.DB.prepare(`
-      SELECT h.id, h.game_id, h.small_blind, h.big_blind, h.community_cards, h.winners, h.total_pot, h.created_at
-      FROM hands h
-      JOIN hand_players hp ON hp.hand_id = h.id
-      WHERE hp.bot_id = ?
-      ORDER BY h.created_at DESC
-      LIMIT ?
-    `).bind(botId, limit).all();
-  } else {
-    query = await c.env.DB.prepare(`
-      SELECT id, game_id, small_blind, big_blind, community_cards, winners, total_pot, created_at
-      FROM hands
-      ORDER BY created_at DESC
-      LIMIT ?
-    `).bind(limit).all();
+  try {
+    let query: any;
+    if (botId) {
+      query = await c.env.DB.prepare(`
+        SELECT h.id, h.game_id, h.small_blind, h.big_blind, h.community_cards, h.winners, h.total_pot, h.created_at
+        FROM hands h
+        JOIN hand_players hp ON hp.hand_id = h.id
+        WHERE hp.bot_id = ?
+        ORDER BY h.created_at DESC
+        LIMIT ?
+      `).bind(botId, limit).all();
+    } else {
+      query = await c.env.DB.prepare(`
+        SELECT id, game_id, small_blind, big_blind, community_cards, winners, total_pot, created_at
+        FROM hands
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).bind(limit).all();
+    }
+
+    const hands = (query.results || []).map((h: any) => ({
+      ...h,
+      communityCards: h.community_cards ? JSON.parse(h.community_cards) : [],
+      winners: h.winners ? JSON.parse(h.winners) : []
+    }));
+
+    return c.json({ hands });
+  } catch (err: any) {
+    console.error('Error fetching hands from D1:', err);
+    return c.json({ hands: [] });
   }
-
-  const hands = (query.results || []).map((h: any) => ({
-    ...h,
-    communityCards: JSON.parse(h.community_cards),
-    winners: JSON.parse(h.winners)
-  }));
-
-  return c.json({ hands });
 });
 
 // 10. Single Hand Detail (D1)
 app.get('/api/hands/:id', async (c) => {
   const id = c.req.param('id');
-  const hand = await c.env.DB.prepare('SELECT * FROM hands WHERE id = ?').bind(id).first() as any;
-  if (!hand) {
-    return c.json({ error: 'Hand not found' }, 404);
+  try {
+    const hand = await c.env.DB.prepare('SELECT * FROM hands WHERE id = ?').bind(id).first() as any;
+    if (!hand) {
+      return c.json({ error: 'Hand not found' }, 404);
+    }
+
+    const players = await c.env.DB.prepare(`
+      SELECT hp.*, b.name AS bot_name
+      FROM hand_players hp
+      LEFT JOIN bots b ON b.id = hp.bot_id
+      WHERE hp.hand_id = ?
+      ORDER BY hp.seat_index ASC
+    `).bind(id).all();
+
+    return c.json({
+      hand: {
+        ...hand,
+        communityCards: hand.community_cards ? JSON.parse(hand.community_cards) : [],
+        actionHistory: hand.action_history ? JSON.parse(hand.action_history) : [],
+        winners: hand.winners ? JSON.parse(hand.winners) : []
+      },
+      players: (players.results || []).map((p: any) => ({
+        ...p,
+        holeCards: p.hole_cards ? JSON.parse(p.hole_cards) : null
+      }))
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
   }
-
-  const players = await c.env.DB.prepare(`
-    SELECT hp.*, b.name AS bot_name
-    FROM hand_players hp
-    LEFT JOIN bots b ON b.id = hp.bot_id
-    WHERE hp.hand_id = ?
-    ORDER BY hp.seat_index ASC
-  `).bind(id).all();
-
-  return c.json({
-    hand: {
-      ...hand,
-      communityCards: JSON.parse(hand.community_cards),
-      actionHistory: JSON.parse(hand.action_history),
-      winners: JSON.parse(hand.winners)
-    },
-    players: (players.results || []).map((p: any) => ({
-      ...p,
-      holeCards: p.hole_cards ? JSON.parse(p.hole_cards) : null
-    }))
-  });
 });
 
 // 11. Bot Hands Telemetry (D1)
@@ -204,95 +218,108 @@ app.get('/api/bots/:id/hands', async (c) => {
   const botId = c.req.param('id');
   const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
 
-  const query = await c.env.DB.prepare(`
-    SELECT 
-      hp.hand_id,
-      hp.starting_stack,
-      hp.final_stack,
-      hp.net_chips,
-      hp.hole_cards,
-      hp.rank_description,
-      h.community_cards,
-      h.action_history,
-      h.winners,
-      h.total_pot,
-      h.created_at
-    FROM hand_players hp
-    JOIN hands h ON h.id = hp.hand_id
-    WHERE hp.bot_id = ?
-    ORDER BY h.created_at DESC
-    LIMIT ?
-  `).bind(botId, limit).all();
+  try {
+    const query = await c.env.DB.prepare(`
+      SELECT 
+        hp.hand_id,
+        hp.starting_stack,
+        hp.final_stack,
+        hp.net_chips,
+        hp.hole_cards,
+        hp.rank_description,
+        h.community_cards,
+        h.action_history,
+        h.winners,
+        h.total_pot,
+        h.created_at
+      FROM hand_players hp
+      JOIN hands h ON h.id = hp.hand_id
+      WHERE hp.bot_id = ?
+      ORDER BY h.created_at DESC
+      LIMIT ?
+    `).bind(botId, limit).all();
 
-  const hands = (query.results || []).map((row: any) => ({
-    handId: row.hand_id,
-    startingStack: row.starting_stack,
-    finalStack: row.final_stack,
-    netChips: row.net_chips,
-    holeCards: row.hole_cards ? JSON.parse(row.hole_cards) : null,
-    rankDescription: row.rank_description,
-    communityCards: JSON.parse(row.community_cards),
-    actionHistory: JSON.parse(row.action_history),
-    winners: JSON.parse(row.winners),
-    totalPot: row.total_pot,
-    timestamp: row.created_at
-  }));
+    const hands = (query.results || []).map((row: any) => ({
+      handId: row.hand_id,
+      startingStack: row.starting_stack,
+      finalStack: row.final_stack,
+      netChips: row.net_chips,
+      holeCards: row.hole_cards ? JSON.parse(row.hole_cards) : null,
+      rankDescription: row.rank_description,
+      communityCards: row.community_cards ? JSON.parse(row.community_cards) : [],
+      actionHistory: row.action_history ? JSON.parse(row.action_history) : [],
+      winners: row.winners ? JSON.parse(row.winners) : [],
+      totalPot: row.total_pot,
+      timestamp: row.created_at
+    }));
 
-  return c.json({ botId, count: hands.length, hands });
+    return c.json({ botId, count: hands.length, hands });
+  } catch (err: any) {
+    return c.json({ botId, count: 0, hands: [] });
+  }
 });
 
 // 12. Leaderboard (D1)
 app.get('/api/leaderboard', async (c) => {
-  const query = await c.env.DB.prepare(`
-    SELECT 
-      b.id AS bot_id,
-      b.name,
-      b.is_house,
-      COUNT(hp.hand_id) AS hands_played,
-      COALESCE(SUM(hp.net_chips), 0) AS total_chips,
-      (SELECT COUNT(*) FROM matches WHERE winner_bot_id = b.id) AS tournaments_won,
-      (SELECT COUNT(*) FROM bot_errors WHERE bot_id = b.id AND error_type = 'timeout') AS timeouts,
-      (SELECT COUNT(*) FROM bot_errors WHERE bot_id = b.id) AS total_errors
-    FROM bots b
-    LEFT JOIN hand_players hp ON hp.bot_id = b.id
-    GROUP BY b.id
-    HAVING hands_played > 0 OR b.is_house = 0
-    ORDER BY tournaments_won DESC, total_chips DESC
-  `).all();
+  try {
+    const query = await c.env.DB.prepare(`
+      SELECT 
+        b.id AS bot_id,
+        b.name,
+        b.is_house,
+        COUNT(hp.hand_id) AS hands_played,
+        COALESCE(SUM(hp.net_chips), 0) AS total_chips,
+        (SELECT COUNT(*) FROM matches WHERE winner_bot_id = b.id) AS tournaments_won,
+        (SELECT COUNT(*) FROM bot_errors WHERE bot_id = b.id AND error_type = 'timeout') AS timeouts,
+        (SELECT COUNT(*) FROM bot_errors WHERE bot_id = b.id) AS total_errors
+      FROM bots b
+      LEFT JOIN hand_players hp ON hp.bot_id = b.id
+      GROUP BY b.id
+      HAVING hands_played > 0 OR b.is_house = 0
+      ORDER BY tournaments_won DESC, total_chips DESC
+    `).all();
 
-  const leaderboard = (query.results || []).map((row: any) => {
-    const bb = 100;
-    const bb100 = row.hands_played > 0
-      ? ((row.total_chips / bb / row.hands_played) * 100).toFixed(2)
-      : '0.00';
+    const leaderboard = (query.results || []).map((row: any) => {
+      const bb = 100;
+      const bb100 = row.hands_played > 0
+        ? ((row.total_chips / bb / row.hands_played) * 100).toFixed(2)
+        : '0.00';
 
-    return {
-      botId: row.bot_id,
-      name: row.name,
-      isHouse: Boolean(row.is_house),
-      tournamentsWon: row.tournaments_won || 0,
-      handsPlayed: row.hands_played,
-      chipsWon: row.total_chips,
-      bb100: parseFloat(bb100),
-      timeouts: row.timeouts,
-      errors: row.total_errors
-    };
-  });
+      return {
+        botId: row.bot_id,
+        name: row.name,
+        isHouse: Boolean(row.is_house),
+        tournamentsWon: row.tournaments_won || 0,
+        handsPlayed: row.hands_played,
+        chipsWon: row.total_chips,
+        bb100: parseFloat(bb100),
+        timeouts: row.timeouts,
+        errors: row.total_errors
+      };
+    });
 
-  return c.json({ leaderboard });
+    return c.json({ leaderboard });
+  } catch (err: any) {
+    console.error('Error fetching leaderboard from D1:', err);
+    return c.json({ leaderboard: [] });
+  }
 });
 
 // 13. Bot Errors (D1)
 app.get('/api/errors', async (c) => {
-  const errors = await c.env.DB.prepare(`
-    SELECT be.*, b.name AS bot_name
-    FROM bot_errors be
-    LEFT JOIN bots b ON b.id = be.bot_id
-    ORDER BY be.created_at DESC
-    LIMIT 50
-  `).all();
+  try {
+    const errors = await c.env.DB.prepare(`
+      SELECT be.*, b.name AS bot_name
+      FROM bot_errors be
+      LEFT JOIN bots b ON b.id = be.bot_id
+      ORDER BY be.created_at DESC
+      LIMIT 50
+    `).all();
 
-  return c.json({ errors: errors.results || [] });
+    return c.json({ errors: errors.results || [] });
+  } catch (err: any) {
+    return c.json({ errors: [] });
+  }
 });
 
 // 14. Contract & Schema Specification Endpoints
