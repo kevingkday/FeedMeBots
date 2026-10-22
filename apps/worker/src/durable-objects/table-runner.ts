@@ -43,6 +43,11 @@ export class TableDurableObject implements DurableObject {
   private matchCounter = 0;
   private prng = new PRNG(Date.now());
   private connectedSockets: Set<WebSocket> = new Set();
+  private connectedBotSockets: Map<string, {
+    socket: WebSocket;
+    botName: string;
+    pending: Map<string, { resolve: (action: Action) => void; timer: any; start: number; state: PlayerGameStateV1 }>;
+  }> = new Map();
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -50,7 +55,7 @@ export class TableDurableObject implements DurableObject {
     const url = new URL(request.url);
 
     // WebSocket endpoint for real-time table spectator streaming
-    if (url.pathname === '/ws') {
+    if (url.pathname === '/ws' || url.pathname === '/api/table/ws') {
       if (request.headers.get('Upgrade') !== 'websocket') {
         return new Response('Expected WebSocket', { status: 426 });
       }
@@ -77,6 +82,66 @@ export class TableDurableObject implements DurableObject {
       if (!this.isRunning) {
         this.start();
       }
+
+      return new Response(null, { status: 101, webSocket: client });
+    }
+
+    // WebSocket endpoint for CLI Bridge local bot connections
+    if (url.pathname === '/bot-ws' || url.pathname === '/api/bots/ws') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return new Response('Expected WebSocket', { status: 426 });
+      }
+
+      const apiKey = url.searchParams.get('apiKey');
+      if (!apiKey) {
+        return new Response('Missing apiKey query parameter', { status: 400 });
+      }
+
+      // Authenticate bot against D1
+      const bot = await this.env.DB.prepare('SELECT id, name FROM bots WHERE api_key = ?').bind(apiKey).first() as any;
+      if (!bot) {
+        return new Response('Invalid API key', { status: 401 });
+      }
+
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+
+      server.accept();
+
+      const botEntry = {
+        socket: server,
+        botName: bot.name,
+        pending: new Map<string, { resolve: (action: Action) => void; timer: any; start: number; state: PlayerGameStateV1 }>()
+      };
+      this.connectedBotSockets.set(bot.id, botEntry);
+
+      server.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data as string);
+          if (data.type === 'turn_response' && data.requestId) {
+            const pending = botEntry.pending.get(data.requestId);
+            if (pending) {
+              clearTimeout(pending.timer);
+              botEntry.pending.delete(data.requestId);
+              pending.resolve(data.action);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      });
+
+      server.addEventListener('close', () => {
+        this.connectedBotSockets.delete(bot.id);
+      });
+
+      // Send welcome message
+      server.send(JSON.stringify({
+        type: 'welcome',
+        botId: bot.id,
+        botName: bot.name,
+        message: `Successfully connected to FeedMeBots as "${bot.name}"! Waiting for game turns.`
+      }));
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -149,32 +214,64 @@ export class TableDurableObject implements DurableObject {
   }
 
   private async assembleSeats(): Promise<TableBot[]> {
-    // 1. Fetch active registered user bots from D1
-    let userBots: Array<{ id: string; name: string; webhook_url: string }> = [];
-    try {
-      const res = await this.env.DB.prepare(`
-        SELECT id, name, webhook_url FROM bots 
-        WHERE is_active = 1 AND is_house = 0
-        ORDER BY RANDOM()
-        LIMIT 4
-      `).all();
-      userBots = (res.results || []) as any;
-    } catch (e) {
-      console.error('Failed to query user bots from D1:', e);
-    }
-
     const seats: TableBot[] = [];
-    for (const ub of userBots) {
-      seats.push({
-        id: ub.id,
-        name: ub.name,
-        isHouse: false,
-        webhookUrl: ub.webhook_url,
-        stack: 10000
-      });
+    const connectedIds = Array.from(this.connectedBotSockets.keys());
+
+    // 1. Prioritize actively connected CLI bridge bots
+    if (connectedIds.length > 0) {
+      try {
+        const placeholders = connectedIds.map(() => '?').join(',');
+        const res = await this.env.DB.prepare(`
+          SELECT id, name, webhook_url FROM bots 
+          WHERE id IN (${placeholders}) AND is_active = 1
+          LIMIT 4
+        `).bind(...connectedIds).all();
+
+        for (const cb of (res.results || []) as any[]) {
+          seats.push({
+            id: cb.id,
+            name: cb.name,
+            isHouse: false,
+            webhookUrl: cb.webhook_url,
+            stack: 10000
+          });
+        }
+      } catch (e) {
+        console.error('Failed to query connected bots from D1:', e);
+      }
     }
 
-    // 2. Fill remaining seats with house bots
+    // 2. Fill remaining user slots (up to 4 total) with random registered bots
+    if (seats.length < 4) {
+      const existingIds = seats.map(s => s.id);
+      const notInClause = existingIds.length > 0
+        ? `AND id NOT IN (${existingIds.map(() => '?').join(',')})`
+        : '';
+      const limit = 4 - seats.length;
+
+      try {
+        const res = await this.env.DB.prepare(`
+          SELECT id, name, webhook_url FROM bots 
+          WHERE is_active = 1 AND is_house = 0 ${notInClause}
+          ORDER BY RANDOM()
+          LIMIT ?
+        `).bind(...existingIds, limit).all();
+
+        for (const ub of (res.results || []) as any[]) {
+          seats.push({
+            id: ub.id,
+            name: ub.name,
+            isHouse: false,
+            webhookUrl: ub.webhook_url,
+            stack: 10000
+          });
+        }
+      } catch (e) {
+        console.error('Failed to query user bots from D1:', e);
+      }
+    }
+
+    // 3. Fill remaining seats with house bots up to 6
     const houseConfigs = [
       { id: 'house_tag_1', name: 'TightAggressiveBot', fn: createTAGBot(this.prng.nextInt()) },
       { id: 'house_station_1', name: 'CallingStationBot', fn: callingStationBot },
@@ -292,7 +389,16 @@ export class TableDurableObject implements DurableObject {
       if (bot.isHouse && bot.localFn) {
         await new Promise(r => setTimeout(r, 450));
         action = bot.localFn(playerView);
-      } else if (bot.webhookUrl) {
+      } else if (this.connectedBotSockets.has(bot.id)) {
+        // Dispatched via active WebSocket CLI Bridge (zero public URL needed!)
+        const dispatch = await this.dispatchBotWebSocket(bot.id, playerView, 2000);
+        if (dispatch.success && dispatch.action) {
+          action = dispatch.action;
+        } else {
+          const canCheck = playerView.legalActions.some(a => a.action === 'check');
+          action = canCheck ? { action: 'check' } : { action: 'fold' };
+        }
+      } else if (bot.webhookUrl && !bot.webhookUrl.startsWith('cli://')) {
         const dispatch = await this.dispatchWebhook(bot.id, bot.webhookUrl, playerView, 2000);
         if (dispatch.success && dispatch.action) {
           action = dispatch.action;
@@ -342,6 +448,49 @@ export class TableDurableObject implements DurableObject {
       }
     }
     return fromSeatIndex;
+  }
+
+  private async dispatchBotWebSocket(
+    botId: string,
+    state: PlayerGameStateV1,
+    timeoutMs = 2000
+  ): Promise<{ success: boolean; action?: Action; errorMessage?: string; latencyMs: number }> {
+    const conn = this.connectedBotSockets.get(botId);
+    if (!conn) {
+      return { success: false, errorMessage: 'Bot not connected', latencyMs: 0 };
+    }
+
+    const requestId = `req_${state.handId}_${Date.now()}`;
+    const start = Date.now();
+
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        conn.pending.delete(requestId);
+        resolve({ success: false, errorMessage: 'Timeout', latencyMs: Date.now() - start });
+      }, timeoutMs);
+
+      conn.pending.set(requestId, {
+        resolve: (action) => {
+          resolve({ success: true, action, latencyMs: Date.now() - start });
+        },
+        timer,
+        start,
+        state
+      });
+
+      try {
+        conn.socket.send(JSON.stringify({
+          type: 'turn_request',
+          requestId,
+          state,
+          timeoutMs
+        }));
+      } catch (e: any) {
+        clearTimeout(timer);
+        conn.pending.delete(requestId);
+        resolve({ success: false, errorMessage: e.message, latencyMs: Date.now() - start });
+      }
+    });
   }
 
   private async dispatchWebhook(

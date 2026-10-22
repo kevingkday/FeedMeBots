@@ -21,7 +21,13 @@ app.get('/api/table/ws', (c) => {
   return stub.fetch(c.req.raw);
 });
 
-// 2. REST Live Table State
+// 2. WebSocket CLI Bridge Endpoint for local bots
+app.get('/api/bots/ws', (c) => {
+  const stub = getTableStub(c.env);
+  return stub.fetch(c.req.raw);
+});
+
+// 3. REST Live Table State
 app.get('/api/table/live', (c) => {
   const stub = getTableStub(c.env);
   const url = new URL(c.req.url);
@@ -29,7 +35,7 @@ app.get('/api/table/live', (c) => {
   return stub.fetch(new Request(url.toString()));
 });
 
-// 3. Table Runner Controls
+// 4. Table Runner Controls
 app.post('/api/table/start', (c) => {
   const stub = getTableStub(c.env);
   const url = new URL(c.req.url);
@@ -44,7 +50,7 @@ app.post('/api/table/stop', (c) => {
   return stub.fetch(new Request(url.toString(), { method: 'POST' }));
 });
 
-// 4. Test Connection
+// 5. Test Connection
 app.post('/api/test-connection', async (c) => {
   const stub = getTableStub(c.env);
   const body = await c.req.json();
@@ -57,16 +63,17 @@ app.post('/api/test-connection', async (c) => {
   }));
 });
 
-// 5. Bot Registration (D1)
+// 6. Bot Registration (D1)
 app.post('/api/bots/register', async (c) => {
-  const { name, webhookUrl } = await c.req.json<{ name: string; webhookUrl: string }>();
+  const { name, webhookUrl } = await c.req.json<{ name: string; webhookUrl?: string }>();
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return c.json({ error: 'Field "name" is required and must be non-empty.' }, 400);
   }
-  if (!webhookUrl || (!webhookUrl.startsWith('http://') && !webhookUrl.startsWith('https://'))) {
-    return c.json({ error: 'Field "webhookUrl" must be a valid HTTP or HTTPS URL.' }, 400);
-  }
+
+  const effectiveWebhook = (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.trim().length > 0)
+    ? webhookUrl.trim()
+    : 'cli://bridge';
 
   const botId = `bot_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
   const apiKey = `fmb_${crypto.randomUUID().replace(/-/g, '')}`;
@@ -75,18 +82,19 @@ app.post('/api/bots/register', async (c) => {
   await c.env.DB.prepare(`
     INSERT INTO bots (id, name, api_key, webhook_url, is_active, is_house, created_at, updated_at)
     VALUES (?, ?, ?, ?, 1, 0, ?, ?)
-  `).bind(botId, name.trim(), apiKey, webhookUrl.trim(), now, now).run();
+  `).bind(botId, name.trim(), apiKey, effectiveWebhook, now, now).run();
 
   return c.json({
     botId,
     name: name.trim(),
-    webhookUrl: webhookUrl.trim(),
+    webhookUrl: effectiveWebhook,
     apiKey,
+    cliBridgeCommand: `npx @feedmebots/cli connect --bot http://localhost:8080/action --key ${apiKey}`,
     message: 'Bot registered successfully on Cloudflare D1.'
   }, 201);
 });
 
-// 6. Update Bot (D1)
+// 7. Update Bot (D1)
 app.put('/api/bots/:id', async (c) => {
   const id = c.req.param('id');
   const apiKey = c.req.header('x-api-key');
@@ -118,7 +126,122 @@ app.put('/api/bots/:id', async (c) => {
   });
 });
 
-// 7. Leaderboard (D1)
+// 8. Bot List (D1)
+app.get('/api/bots', async (c) => {
+  const bots = await c.env.DB.prepare(`
+    SELECT id, name, is_house FROM bots
+    WHERE is_active = 1
+    ORDER BY is_house ASC, name ASC
+  `).all();
+  return c.json({ bots: bots.results || [] });
+});
+
+// 9. Hand History List (D1)
+app.get('/api/hands', async (c) => {
+  const limit = Math.min(parseInt(c.req.query('limit') || '25', 10), 100);
+  const botId = c.req.query('botId');
+
+  let query: any;
+  if (botId) {
+    query = await c.env.DB.prepare(`
+      SELECT h.id, h.game_id, h.small_blind, h.big_blind, h.community_cards, h.winners, h.total_pot, h.created_at
+      FROM hands h
+      JOIN hand_players hp ON hp.hand_id = h.id
+      WHERE hp.bot_id = ?
+      ORDER BY h.created_at DESC
+      LIMIT ?
+    `).bind(botId, limit).all();
+  } else {
+    query = await c.env.DB.prepare(`
+      SELECT id, game_id, small_blind, big_blind, community_cards, winners, total_pot, created_at
+      FROM hands
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).bind(limit).all();
+  }
+
+  const hands = (query.results || []).map((h: any) => ({
+    ...h,
+    communityCards: JSON.parse(h.community_cards),
+    winners: JSON.parse(h.winners)
+  }));
+
+  return c.json({ hands });
+});
+
+// 10. Single Hand Detail (D1)
+app.get('/api/hands/:id', async (c) => {
+  const id = c.req.param('id');
+  const hand = await c.env.DB.prepare('SELECT * FROM hands WHERE id = ?').bind(id).first() as any;
+  if (!hand) {
+    return c.json({ error: 'Hand not found' }, 404);
+  }
+
+  const players = await c.env.DB.prepare(`
+    SELECT hp.*, b.name AS bot_name
+    FROM hand_players hp
+    LEFT JOIN bots b ON b.id = hp.bot_id
+    WHERE hp.hand_id = ?
+    ORDER BY hp.seat_index ASC
+  `).bind(id).all();
+
+  return c.json({
+    hand: {
+      ...hand,
+      communityCards: JSON.parse(hand.community_cards),
+      actionHistory: JSON.parse(hand.action_history),
+      winners: JSON.parse(hand.winners)
+    },
+    players: (players.results || []).map((p: any) => ({
+      ...p,
+      holeCards: p.hole_cards ? JSON.parse(p.hole_cards) : null
+    }))
+  });
+});
+
+// 11. Bot Hands Telemetry (D1)
+app.get('/api/bots/:id/hands', async (c) => {
+  const botId = c.req.param('id');
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
+
+  const query = await c.env.DB.prepare(`
+    SELECT 
+      hp.hand_id,
+      hp.starting_stack,
+      hp.final_stack,
+      hp.net_chips,
+      hp.hole_cards,
+      hp.rank_description,
+      h.community_cards,
+      h.action_history,
+      h.winners,
+      h.total_pot,
+      h.created_at
+    FROM hand_players hp
+    JOIN hands h ON h.id = hp.hand_id
+    WHERE hp.bot_id = ?
+    ORDER BY h.created_at DESC
+    LIMIT ?
+  `).bind(botId, limit).all();
+
+  const hands = (query.results || []).map((row: any) => ({
+    handId: row.hand_id,
+    startingStack: row.starting_stack,
+    finalStack: row.final_stack,
+    netChips: row.net_chips,
+    holeCards: row.hole_cards ? JSON.parse(row.hole_cards) : null,
+    rankDescription: row.rank_description,
+    communityCards: JSON.parse(row.community_cards),
+    actionHistory: JSON.parse(row.action_history),
+    winners: JSON.parse(row.winners),
+    totalPot: row.total_pot,
+    timestamp: row.created_at
+  }));
+
+  return c.json({ botId, count: hands.length, hands });
+});
+
+// 12. Leaderboard (D1)
 app.get('/api/leaderboard', async (c) => {
   const query = await c.env.DB.prepare(`
     SELECT 
@@ -159,7 +282,7 @@ app.get('/api/leaderboard', async (c) => {
   return c.json({ leaderboard });
 });
 
-// 8. Bot Errors (D1)
+// 13. Bot Errors (D1)
 app.get('/api/errors', async (c) => {
   const errors = await c.env.DB.prepare(`
     SELECT be.*, b.name AS bot_name
@@ -170,6 +293,44 @@ app.get('/api/errors', async (c) => {
   `).all();
 
   return c.json({ errors: errors.results || [] });
+});
+
+// 14. Contract & Schema Specification Endpoints
+app.get('/contract', (c) => c.redirect('/#contract'));
+app.get('/api-contract', (c) => c.redirect('/#contract'));
+app.get('/spec', (c) => c.redirect('/#contract'));
+
+app.get('/api/spec', (c) => {
+  return c.json({
+    name: 'FeedMeBots API Specification (WSDL Equivalent)',
+    version: 'v1',
+    domain: 'https://feedmework.com',
+    protocol: 'HTTP/1.1 JSON Webhooks & WebSockets',
+    slaTimeoutMs: 2000,
+    schemas: {
+      gameState: 'https://feedmework.com/schemas/v1/game-state.schema.json',
+      botAction: 'https://feedmework.com/schemas/v1/bot-action.schema.json'
+    },
+    endpoints: {
+      registerBot: 'POST /api/bots/register',
+      updateBot: 'PUT /api/bots/:id',
+      testConnection: 'POST /api/test-connection',
+      liveTable: 'GET /api/table/live',
+      hands: 'GET /api/hands',
+      botHands: 'GET /api/bots/:id/hands',
+      cliBridgeWs: 'WSS /api/bots/ws?apiKey=YOUR_API_KEY'
+    },
+    cliBridge: {
+      command: 'npx @feedmebots/cli connect --bot http://localhost:8080/action --key YOUR_API_KEY',
+      description: 'Connect local models (Ollama, PyTorch, FastAPI) to FeedMeBots without exposing public ports or hosting on the web.'
+    },
+    actions: ['fold', 'check', 'call', 'raise'],
+    cardNotation: {
+      ranks: ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'],
+      suits: { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' },
+      examples: ['As', 'Kh', '7d', '2c']
+    }
+  });
 });
 
 export default app;

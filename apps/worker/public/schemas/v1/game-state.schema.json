@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://feedmework.com/schemas/v1/game-state.schema.json",
+  "title": "FeedMeBotsGameStateV1",
+  "description": "Per-player game state representation delivered to a bot when action is required, or upon stage updates.",
+  "type": "object",
+  "required": [
+    "version",
+    "gameId",
+    "handId",
+    "seatIndex",
+    "dealerSeat",
+    "smallBlindSeat",
+    "bigBlindSeat",
+    "smallBlind",
+    "bigBlind",
+    "stage",
+    "communityCards",
+    "holeCards",
+    "pot",
+    "sidePots",
+    "toCall",
+    "minRaiseTo",
+    "maxRaiseTo",
+    "legalActions",
+    "seats",
+    "actionHistory"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["v1"],
+      "description": "Schema version"
+    },
+    "gameId": {
+      "type": "string",
+      "description": "Unique identifier for the table/match"
+    },
+    "handId": {
+      "type": "string",
+      "description": "Unique identifier for the specific hand"
+    },
+    "seatIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Hero's seat index (0-5)"
+    },
+    "dealerSeat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Dealer button seat index"
+    },
+    "smallBlindSeat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Small blind seat index"
+    },
+    "bigBlindSeat": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Big blind seat index"
+    },
+    "smallBlind": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Small blind chip amount"
+    },
+    "bigBlind": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Big blind chip amount"
+    },
+    "stage": {
+      "type": "string",
+      "enum": ["preflop", "flop", "turn", "river", "showdown", "ended"],
+      "description": "Current betting round or outcome stage"
+    },
+    "communityCards": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^([2-9TJQKA])([shdc])$"
+      },
+      "maxItems": 5,
+      "description": "Community cards face up on board (e.g. ['As', 'Kd', '2c'])"
+    },
+    "holeCards": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^([2-9TJQKA])([shdc])$"
+      },
+      "maxItems": 2,
+      "description": "Hero's private hole cards (e.g. ['Ah', 'Kh'])"
+    },
+    "pot": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total pot chips currently in play"
+    },
+    "sidePots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["amount", "eligibleSeats"],
+        "properties": {
+          "amount": { "type": "integer", "minimum": 1 },
+          "eligibleSeats": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0, "maximum": 5 }
+          }
+        }
+      },
+      "description": "Calculated main pot and side pots"
+    },
+    "toCall": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Amount required for hero to call current highest bet in this round"
+    },
+    "minRaiseTo": {
+      "type": ["integer", "null"],
+      "description": "Minimum total bet amount hero must raise to, or null if raising is not legal"
+    },
+    "maxRaiseTo": {
+      "type": ["integer", "null"],
+      "description": "Maximum total bet amount hero can raise to (all-in cap), or null if raising is not legal"
+    },
+    "legalActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["fold", "check", "call", "raise"]
+          },
+          "minAmount": { "type": "integer" },
+          "maxAmount": { "type": "integer" }
+        }
+      },
+      "description": "List of currently legal moves for hero"
+    },
+    "seats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seatIndex", "botId", "botName", "stack", "currentBet", "status"],
+        "properties": {
+          "seatIndex": { "type": "integer", "minimum": 0, "maximum": 5 },
+          "botId": { "type": "string" },
+          "botName": { "type": "string" },
+          "stack": { "type": "integer", "minimum": 0 },
+          "currentBet": { "type": "integer", "minimum": 0 },
+          "status": {
+            "type": "string",
+            "enum": ["active", "folded", "all_in", "sitting_out", "empty"]
+          },
+          "holeCards": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^([2-9TJQKA])([shdc])$" },
+            "description": "Revealed hole cards at showdown if shown, otherwise null or omitted for opponents"
+          }
+        }
+      },
+      "description": "All 6 seats at the table"
+    },
+    "actionHistory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stage", "seatIndex", "action"],
+        "properties": {
+          "stage": { "type": "string" },
+          "seatIndex": { "type": "integer", "minimum": 0, "maximum": 5 },
+          "action": {
+            "type": "string",
+            "enum": ["post_sb", "post_bb", "fold", "check", "call", "raise"]
+          },
+          "amount": { "type": "integer" }
+        }
+      },
+      "description": "Chronological history of bets and actions in this hand"
+    }
+  }
+}
