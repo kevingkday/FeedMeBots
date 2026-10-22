@@ -14,10 +14,21 @@ export function registerRoutes(app: FastifyInstance, tableRunner: TableRunner) {
       return reply.code(400).send({ error: 'Field "name" is required and must be non-empty.' });
     }
 
-    // If webhookUrl is omitted or empty, default to 'cli://bridge' for CLI bridge mode
-    const effectiveWebhook = (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.trim().length > 0)
-      ? webhookUrl.trim()
-      : 'cli://bridge';
+    let effectiveWebhook = 'cli://bridge';
+    if (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.trim().length > 0) {
+      const trimmed = webhookUrl.trim();
+      if (trimmed !== 'cli://bridge') {
+        try {
+          const parsed = new URL(trimmed);
+          if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return reply.code(400).send({ error: 'Webhook URL must be a valid HTTP or HTTPS URL.' });
+          }
+        } catch {
+          return reply.code(400).send({ error: 'Webhook URL must be a valid HTTP or HTTPS URL.' });
+        }
+      }
+      effectiveWebhook = trimmed;
+    }
 
     const botId = `bot_${crypto.randomBytes(6).toString('hex')}`;
     const apiKey = `fmb_${crypto.randomBytes(16).toString('hex')}`;
