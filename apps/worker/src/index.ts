@@ -66,7 +66,7 @@ app.post('/api/test-connection', async (c) => {
 // Auto-initialize D1 tables if they don't exist yet
 async function ensureDb(db: D1Database) {
   try {
-    await db.exec(`
+    await db.prepare(`
       CREATE TABLE IF NOT EXISTS bots (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -76,7 +76,10 @@ async function ensureDb(db: D1Database) {
         is_house INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
-      );
+      )
+    `).run();
+
+    await db.prepare(`
       CREATE TABLE IF NOT EXISTS hands (
         id TEXT PRIMARY KEY,
         game_id TEXT NOT NULL,
@@ -89,7 +92,10 @@ async function ensureDb(db: D1Database) {
         winners TEXT NOT NULL,
         total_pot INTEGER NOT NULL,
         created_at INTEGER NOT NULL
-      );
+      )
+    `).run();
+
+    await db.prepare(`
       CREATE TABLE IF NOT EXISTS hand_players (
         hand_id TEXT NOT NULL,
         seat_index INTEGER NOT NULL,
@@ -100,12 +106,11 @@ async function ensureDb(db: D1Database) {
         hole_cards TEXT,
         rank_description TEXT,
         PRIMARY KEY (hand_id, seat_index)
-      );
-      CREATE INDEX IF NOT EXISTS idx_hands_created ON hands(created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_hand_players_bot ON hand_players(bot_id);
-    `);
+      )
+    `).run();
   } catch (err: any) {
-    console.warn('ensureDb warning:', err?.message || err);
+    console.error('ensureDb error:', err);
+    throw new Error(`Failed to ensure D1 database schema: ${err?.message || err}`);
   }
 }
 
