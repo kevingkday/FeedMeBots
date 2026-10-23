@@ -209,6 +209,12 @@ export class TableDurableObject implements DurableObject {
 
   private async runLoop() {
     while (this.isRunning) {
+      // Idle / pause the table if nobody is connected (no external bots and no spectators watching)
+      if (this.connectedSockets.size === 0 && this.connectedBotSockets.size === 0) {
+        this.isRunning = false;
+        break;
+      }
+
       try {
         await this.playSitAndGoMatch();
       } catch (err) {
@@ -546,9 +552,20 @@ export class TableDurableObject implements DurableObject {
 
   private async saveHandToD1(state: InternalGameState, startingStacks: number[], seed: number) {
     try {
+      // Only record hands if at least one external (non-house) bot participated!
+      // Games between house bots have zero training value and burn through Cloudflare D1 write limits.
+      const externalSeats = state.seats.filter(seat => {
+        const bot = this.currentSeats[seat.seatIndex];
+        return bot && !bot.isHouse;
+      });
+
+      if (externalSeats.length === 0) {
+        return; // Zero D1 writes for house-only hands
+      }
+
       const totalPot = state.pots.reduce((sum, p) => sum + p.amount, 0);
 
-      // Insert hand
+      // Insert hand header
       await this.env.DB.prepare(`
         INSERT INTO hands (id, game_id, seed, small_blind, big_blind, dealer_seat, community_cards, action_history, winners, total_pot, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -566,8 +583,8 @@ export class TableDurableObject implements DurableObject {
         Date.now()
       ).run();
 
-      // Insert hand players
-      const stmts = state.seats.map(seat => {
+      // Only insert hand_players rows for the external bot(s)
+      const stmts = externalSeats.map(seat => {
         const starting = startingStacks[seat.seatIndex] ?? 10000;
         const net = seat.stack - starting;
         return this.env.DB.prepare(`

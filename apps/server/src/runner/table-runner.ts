@@ -376,6 +376,16 @@ export class TableRunner {
 
   private saveHandToDb(state: InternalGameState, startingStacks: number[], seed: number) {
     try {
+      // Only record hands if at least one external (non-house) bot participated!
+      const externalSeats = state.seats.filter(seat => {
+        const bot = this.currentSeats[seat.seatIndex];
+        return bot && !bot.isHouse;
+      });
+
+      if (externalSeats.length === 0) {
+        return; // Skip saving hands between only house bots
+      }
+
       const totalPot = state.pots.reduce((sum, p) => sum + p.amount, 0);
 
       const insertHand = db.prepare(`
@@ -403,7 +413,7 @@ export class TableRunner {
           Date.now()
         );
 
-        for (const seat of state.seats) {
+        for (const seat of externalSeats) {
           const starting = startingStacks[seat.seatIndex] ?? 10000;
           const net = seat.stack - starting;
           insertPlayer.run(
