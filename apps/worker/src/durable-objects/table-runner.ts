@@ -143,6 +143,11 @@ export class TableDurableObject implements DurableObject {
         message: `Successfully connected to FeedMeBots as "${bot.name}"! Waiting for game turns.`
       }));
 
+      // Auto start table if not already running so bot can play even if no browser is open
+      if (!this.isRunning) {
+        this.start();
+      }
+
       return new Response(null, { status: 101, webSocket: client });
     }
 
