@@ -46,8 +46,8 @@ export class TableDurableObject implements DurableObject {
   private connectedBotSockets: Map<string, {
     socket: WebSocket;
     botName: string;
-    pending: Map<string, { resolve: (action: Action) => void; timer: any; start: number; state: PlayerGameStateV1 }>;
   }> = new Map();
+  private lastPruneTime = 0;
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -603,8 +603,31 @@ export class TableDurableObject implements DurableObject {
       });
 
       await this.env.DB.batch(stmts);
+
+      // Auto-prune hands older than 7 days
+      await this.pruneOldHands();
     } catch (e) {
       console.error('Failed to save hand to D1:', e);
+    }
+  }
+
+  private async pruneOldHands() {
+    const now = Date.now();
+    // Prune at most once per hour
+    if (now - this.lastPruneTime < 3600000) return;
+    this.lastPruneTime = now;
+
+    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    try {
+      await this.env.DB.prepare(`
+        DELETE FROM hand_players WHERE hand_id IN (SELECT id FROM hands WHERE created_at < ?)
+      `).bind(oneWeekAgo).run();
+
+      await this.env.DB.prepare(`
+        DELETE FROM hands WHERE created_at < ?
+      `).bind(oneWeekAgo).run();
+    } catch (err) {
+      console.error('Failed to auto-prune old hands from D1:', err);
     }
   }
 

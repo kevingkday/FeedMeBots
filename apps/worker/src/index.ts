@@ -292,6 +292,32 @@ app.get('/api/hands/:id', async (c) => {
   }
 });
 
+// 10b. Prune Hands Data (7-day retention or custom query parameter)
+app.post('/api/hands/prune', async (c) => {
+  const days = Math.max(parseInt(c.req.query('days') || '7', 10), 1);
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  try {
+    const resPlayers = await c.env.DB.prepare(`
+      DELETE FROM hand_players WHERE hand_id IN (SELECT id FROM hands WHERE created_at < ?)
+    `).bind(cutoff).run();
+
+    const resHands = await c.env.DB.prepare(`
+      DELETE FROM hands WHERE created_at < ?
+    `).bind(cutoff).run();
+
+    return c.json({
+      success: true,
+      cutoffTimestamp: cutoff,
+      daysRetained: days,
+      handsDeleted: resHands.meta?.changes ?? 0,
+      playerRecordsDeleted: resPlayers.meta?.changes ?? 0
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // 11. Bot Hands Telemetry (D1)
 app.get('/api/bots/:id/hands', async (c) => {
   const botId = c.req.param('id');
