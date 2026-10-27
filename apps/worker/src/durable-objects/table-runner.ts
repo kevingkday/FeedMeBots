@@ -46,8 +46,11 @@ export class TableDurableObject implements DurableObject {
   private connectedBotSockets: Map<string, {
     socket: WebSocket;
     botName: string;
+    pending: Map<string, { resolve: (action: Action) => void; timer: any; start: number; state: PlayerGameStateV1 }>;
   }> = new Map();
   private lastPruneTime = 0;
+  private lastSpectatorPollTime = 0;
+  private manualPaused = false;
 
   constructor(private state: DurableObjectState, private env: Env) {}
 
@@ -79,7 +82,7 @@ export class TableDurableObject implements DurableObject {
       }));
 
       // Auto start table if not already running
-      if (!this.isRunning) {
+      if (!this.isRunning && !this.manualPaused) {
         this.start();
       }
 
@@ -145,6 +148,7 @@ export class TableDurableObject implements DurableObject {
 
       // Auto start table if not already running so bot can play even if no browser is open
       if (!this.isRunning) {
+        this.manualPaused = false;
         this.start();
       }
 
@@ -153,7 +157,8 @@ export class TableDurableObject implements DurableObject {
 
     // REST state endpoint
     if (url.pathname === '/state') {
-      if (!this.isRunning) {
+      this.lastSpectatorPollTime = Date.now();
+      if (!this.isRunning && !this.manualPaused) {
         this.start();
       }
       return Response.json({
@@ -171,16 +176,24 @@ export class TableDurableObject implements DurableObject {
     }
 
     if (url.pathname === '/start') {
+      this.manualPaused = false;
+      this.lastSpectatorPollTime = Date.now();
       this.start();
       return Response.json({ isRunning: true });
     }
 
     if (url.pathname === '/stop') {
+      this.manualPaused = true;
       this.stop();
       return Response.json({ isRunning: false });
     }
 
     return new Response('Not Found', { status: 404 });
+  }
+
+  private hasActiveAudience(): boolean {
+    const hasSpectatorPoll = Date.now() - this.lastSpectatorPollTime < 30000;
+    return this.connectedSockets.size > 0 || this.connectedBotSockets.size > 0 || hasSpectatorPoll;
   }
 
   private broadcast(data: any) {
@@ -210,7 +223,7 @@ export class TableDurableObject implements DurableObject {
   private async runLoop() {
     while (this.isRunning) {
       // Idle / pause the table if nobody is connected (no external bots and no spectators watching)
-      if (this.connectedSockets.size === 0 && this.connectedBotSockets.size === 0) {
+      if (!this.hasActiveAudience()) {
         this.isRunning = false;
         break;
       }
@@ -252,7 +265,7 @@ export class TableDurableObject implements DurableObject {
       }
     }
 
-    // 2. Fill remaining user slots (up to 4 total) with random registered bots
+    // 2. Fill remaining user slots (up to 4 total) with reachable public HTTP webhook bots
     if (seats.length < 4) {
       const existingIds = seats.map(s => s.id);
       const notInClause = existingIds.length > 0
@@ -263,7 +276,11 @@ export class TableDurableObject implements DurableObject {
       try {
         const res = await this.env.DB.prepare(`
           SELECT id, name, webhook_url FROM bots 
-          WHERE is_active = 1 AND is_house = 0 ${notInClause}
+          WHERE is_active = 1 AND is_house = 0
+            AND webhook_url NOT LIKE 'cli://%'
+            AND webhook_url NOT LIKE 'http://localhost%'
+            AND webhook_url NOT LIKE 'http://127.0.0.1%'
+            ${notInClause}
           ORDER BY RANDOM()
           LIMIT ?
         `).bind(...existingIds, limit).all();
@@ -316,6 +333,18 @@ export class TableDurableObject implements DurableObject {
     let handNumberInMatch = 0;
 
     while (this.isRunning) {
+      if (!this.hasActiveAudience()) {
+        this.isRunning = false;
+        break;
+      }
+
+      // If a WebSocket bot just connected while a house-only exhibition match is playing,
+      // restart the match immediately so the newly connected bot gets seated right away.
+      const hasExternalSeated = this.currentSeats.some(s => !s.isHouse);
+      if (!hasExternalSeated && this.connectedBotSockets.size > 0) {
+        break;
+      }
+
       const activeBots = this.currentSeats.filter(s => s.stack > 0);
       this.currentMatchInfo = {
         matchId,
@@ -330,14 +359,16 @@ export class TableDurableObject implements DurableObject {
         const champion = activeBots[0] || this.currentSeats[0];
         this.currentMatchInfo.winnerName = champion.name;
 
-        // Record in D1
-        try {
-          await this.env.DB.prepare(`
-            INSERT INTO matches (id, winner_bot_id, total_hands, created_at)
-            VALUES (?, ?, ?, ?)
-          `).bind(matchId, champion.id, handNumberInMatch, Date.now()).run();
-        } catch (e) {
-          console.error('Failed to log match in D1:', e);
+        // Record in D1 only when external bots participated
+        if (hasExternalSeated) {
+          try {
+            await this.env.DB.prepare(`
+              INSERT INTO matches (id, winner_bot_id, total_hands, created_at)
+              VALUES (?, ?, ?, ?)
+            `).bind(matchId, champion.id, handNumberInMatch, Date.now()).run();
+          } catch (e) {
+            console.error('Failed to log match in D1:', e);
+          }
         }
 
         if (this.currentHand) {
