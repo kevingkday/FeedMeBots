@@ -29,13 +29,61 @@ document.addEventListener('DOMContentLoaded', () => {
   setupHowItWorks();
   setupContractCheatSheet();
 
-  // Initial route handling
+  // Initial route & standalone mode handling
+  checkStandaloneUrl();
   handleHashRoute(window.location.hash);
-  window.addEventListener('hashchange', () => handleHashRoute(window.location.hash));
+  window.addEventListener('hashchange', () => {
+    checkStandaloneUrl();
+    handleHashRoute(window.location.hash);
+  });
+  window.addEventListener('popstate', () => {
+    checkStandaloneUrl();
+    handleHashRoute(window.location.hash);
+  });
 });
+
+function checkStandaloneUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const hash = (window.location.hash || '').replace(/^#\/?/, '').toLowerCase();
+  const isStandalone =
+    params.get('view') === 'table' ||
+    params.get('standalone') === '1' ||
+    hash === 'table' ||
+    hash === 'arena' ||
+    window.location.pathname === '/table' ||
+    window.location.pathname === '/arena';
+
+  setStandaloneMode(isStandalone, false);
+}
+
+function setStandaloneMode(enabled, updateUrl = true) {
+  document.body.classList.toggle('standalone-table-mode', Boolean(enabled));
+  const enterBtn = document.getElementById('btn-enter-standalone');
+  if (enterBtn) {
+    enterBtn.innerHTML = enabled ? '&larr; Exit Focus View' : '⛶ Focus Table';
+  }
+
+  if (enabled) {
+    switchTab('tab-live', false);
+  }
+
+  if (updateUrl) {
+    if (enabled) {
+      history.pushState(null, '', '/?view=table');
+    } else {
+      history.pushState(null, '', '/');
+    }
+  }
+}
 
 function handleHashRoute(rawHash) {
   const hash = (rawHash || '').replace(/^#\/?/, '').toLowerCase();
+  if (hash === 'table' || hash === 'arena') {
+    setStandaloneMode(true, false);
+    switchTab('tab-live', false);
+    return;
+  }
+
   const map = {
     '': 'tab-live',
     'live': 'tab-live',
@@ -140,19 +188,43 @@ function setupTabs() {
 }
 
 // ---------------- LIVE TABLE ----------------
+async function toggleTableRunner(triggerBtn) {
+  const isPaused = triggerBtn.textContent.includes('Resume');
+  const endpoint = isPaused ? '/api/table/start' : '/api/table/stop';
+  try {
+    const res = await fetch(endpoint, { method: 'POST' });
+    const data = await res.json();
+    updateRunnerStatus(data.isRunning);
+  } catch (e) {
+    console.error('Failed to toggle runner:', e);
+  }
+}
+
 function setupLiveTable() {
   const toggleBtn = document.getElementById('btn-toggle-runner');
-  toggleBtn.addEventListener('click', async () => {
-    const isPaused = toggleBtn.textContent.includes('Resume');
-    const endpoint = isPaused ? '/api/table/start' : '/api/table/stop';
-    try {
-      const res = await fetch(endpoint, { method: 'POST' });
-      const data = await res.json();
-      updateRunnerStatus(data.isRunning);
-    } catch (e) {
-      console.error('Failed to toggle runner:', e);
-    }
-  });
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => toggleTableRunner(toggleBtn));
+  }
+
+  const toggleStandaloneRunnerBtn = document.getElementById('btn-toggle-runner-standalone');
+  if (toggleStandaloneRunnerBtn) {
+    toggleStandaloneRunnerBtn.addEventListener('click', () => toggleTableRunner(toggleStandaloneRunnerBtn));
+  }
+
+  const enterStandaloneBtn = document.getElementById('btn-enter-standalone');
+  if (enterStandaloneBtn) {
+    enterStandaloneBtn.addEventListener('click', () => {
+      const isCurrentlyStandalone = document.body.classList.contains('standalone-table-mode');
+      setStandaloneMode(!isCurrentlyStandalone, true);
+    });
+  }
+
+  const exitStandaloneBtn = document.getElementById('btn-exit-standalone');
+  if (exitStandaloneBtn) {
+    exitStandaloneBtn.addEventListener('click', () => {
+      setStandaloneMode(false, true);
+    });
+  }
 
   // Home Hero Banner Minimize/Expand
   const heroCard = document.getElementById('home-hero-card');
@@ -207,23 +279,37 @@ async function pollLiveTable() {
 }
 
 function updateRunnerStatus(isRunning) {
-  const dot = document.getElementById('runner-status-dot');
-  const text = document.getElementById('runner-status-text');
-  const btn = document.getElementById('btn-toggle-runner');
+  const configs = [
+    {
+      dot: document.getElementById('runner-status-dot'),
+      text: document.getElementById('runner-status-text'),
+      btn: document.getElementById('btn-toggle-runner'),
+      extraBtnClass: ''
+    },
+    {
+      dot: document.getElementById('runner-status-dot-standalone'),
+      text: document.getElementById('runner-status-text-standalone'),
+      btn: document.getElementById('btn-toggle-runner-standalone'),
+      extraBtnClass: ' btn-sm'
+    }
+  ];
 
-  if (isRunning) {
-    dot.style.backgroundColor = '#10b981';
-    dot.style.boxShadow = '0 0 10px #10b981';
-    text.textContent = 'Runner Active';
-    btn.textContent = 'Pause Table';
-    btn.className = 'btn btn-outline';
-  } else {
-    dot.style.backgroundColor = '#ef4444';
-    dot.style.boxShadow = '0 0 10px #ef4444';
-    text.textContent = 'Runner Paused';
-    btn.textContent = 'Resume Table';
-    btn.className = 'btn btn-primary';
-  }
+  configs.forEach(({ dot, text, btn, extraBtnClass }) => {
+    if (!dot || !text || !btn) return;
+    if (isRunning) {
+      dot.style.backgroundColor = '#10b981';
+      dot.style.boxShadow = '0 0 10px #10b981';
+      text.textContent = 'Runner Active';
+      btn.textContent = 'Pause Table';
+      btn.className = `btn btn-outline${extraBtnClass}`;
+    } else {
+      dot.style.backgroundColor = '#ef4444';
+      dot.style.boxShadow = '0 0 10px #ef4444';
+      text.textContent = 'Runner Paused';
+      btn.textContent = 'Resume Table';
+      btn.className = `btn btn-primary${extraBtnClass}`;
+    }
+  });
 }
 
 function renderTableState(state) {
@@ -256,7 +342,7 @@ function renderTableState(state) {
 
   state.seats.forEach((seat, idx) => {
     const pos = SEAT_POSITIONS[idx] || { x: 50, y: 50 };
-    const isBusted = seat.stack === 0 || seat.status === 'sitting_out';
+    const isBusted = seat.stack === 0 && seat.status !== 'all_in' || seat.status === 'sitting_out';
     const seatDiv = document.createElement('div');
     seatDiv.className = `seat ${isBusted ? 'folded busted' : seat.status}`;
     if (state.currentTurnSeat === seat.seatIndex) {
@@ -266,15 +352,39 @@ function renderTableState(state) {
     seatDiv.style.top = `${pos.y}%`;
 
     const isDealer = state.dealerSeat === seat.seatIndex;
+    const isSB = state.smallBlindSeat === seat.seatIndex;
+    const isBB = state.bigBlindSeat === seat.seatIndex;
+
+    const posBadges = [];
+    if (isDealer && !isBusted) posBadges.push('<span class="pos-pill pos-d" title="Dealer">D</span>');
+    if (isSB && !isBusted) posBadges.push('<span class="pos-pill pos-sb" title="Small Blind">SB</span>');
+    if (isBB && !isBusted) posBadges.push('<span class="pos-pill pos-bb" title="Big Blind">BB</span>');
+
+    let statusPill = '';
+    if (isBusted) {
+      statusPill = '<span class="seat-status-pill eliminated">OUT</span>';
+    } else if (seat.status === 'folded') {
+      statusPill = '<span class="seat-status-pill folded">FOLD</span>';
+    } else if (seat.status === 'all_in') {
+      statusPill = '<span class="seat-status-pill all-in">ALL-IN</span>';
+    }
 
     seatDiv.innerHTML = `
       ${isDealer && !isBusted ? '<div class="dealer-button">D</div>' : ''}
-      <div class="seat-avatar" style="${isBusted ? 'opacity: 0.4;' : ''}">
-        <div class="seat-name"><span class="seat-robot-icon">🤖</span>${escapeHtml(seat.botName || `Bot ${seat.seatIndex}`)}</div>
-        <div class="seat-chips">${isBusted ? '<span style="color: #ef4444; font-weight: 700;">ELIMINATED</span>' : (seat.stack || 0).toLocaleString()}</div>
+      <div class="seat-avatar" style="${isBusted ? 'opacity: 0.45;' : ''}">
+        <div class="seat-header-row">
+          <div class="seat-name"><span class="seat-robot-icon">🤖</span>${escapeHtml(seat.botName || `Bot ${seat.seatIndex}`)}</div>
+          <div class="seat-pos-badges">${posBadges.join('')}</div>
+        </div>
+        <div class="seat-chips-row">
+          <div class="seat-chips">${isBusted ? '<span style="color: #ef4444; font-weight: 700;">ELIMINATED</span>' : (seat.stack || 0).toLocaleString()}</div>
+          ${statusPill}
+        </div>
       </div>
-      <div class="seat-cards" id="seat-cards-${seat.seatIndex}"></div>
-      ${seat.currentBet > 0 ? `<div class="seat-bet">Bet: ${seat.currentBet}</div>` : ''}
+      <div class="seat-bottom-row">
+        <div class="seat-cards" id="seat-cards-${seat.seatIndex}"></div>
+        ${seat.currentBet > 0 ? `<div class="seat-bet">Bet: ${seat.currentBet.toLocaleString()}</div>` : ''}
+      </div>
     `;
 
     seatsContainer.appendChild(seatDiv);

@@ -11,6 +11,25 @@
 </head>
 <body>
   <div class="app-container">
+    <!-- Standalone Table Topbar (Visible only in Standalone Table Mode) -->
+    <div class="standalone-topbar" id="standalone-topbar">
+      <div class="standalone-brand">
+        <span class="standalone-logo">🤖♠️</span>
+        <strong>FeedMe<span>Bots</span></strong>
+        <span class="standalone-badge">STANDALONE LIVE TABLE</span>
+      </div>
+      <div class="standalone-controls">
+        <div class="status-indicator">
+          <span class="pulse-dot" id="runner-status-dot-standalone"></span>
+          <span id="runner-status-text-standalone">Runner Active</span>
+        </div>
+        <button id="btn-toggle-runner-standalone" class="btn btn-outline btn-sm">Pause Table</button>
+        <button id="btn-exit-standalone" class="btn btn-secondary btn-sm" title="Return to full FeedMeBots site & documentation">
+          &larr; Full Site &amp; Docs
+        </button>
+      </div>
+    </div>
+
     <!-- Top Navigation Header -->
     <header class="app-header">
       <div class="brand">
@@ -25,6 +44,11 @@
       </div>
       <div class="header-controls">
         <div class="header-quick-links">
+          <a href="/?view=table" target="_blank" rel="noopener" class="quick-link-pill" id="quick-link-table" title="Open Distraction-Free Standalone Table in New Tab">
+            <span class="pill-icon">🎰</span>
+            <span>Standalone Table</span>
+            <span class="pill-badge">/table ↗</span>
+          </a>
           <a href="/contract" class="quick-link-pill" id="quick-link-contract" title="Developer Cheat Sheet & Schema Specification">
             <span class="pill-icon">📋</span>
             <span>API Contract</span>
@@ -146,10 +170,20 @@
       <div class="table-view-grid">
         <div class="table-stage-wrapper">
           <div class="table-info-bar">
-            <div><strong style="color: var(--accent-gold);">🤖 Live AI Bot Match:</strong> <span id="live-match-info">Match #1 &middot; 6/6 Alive</span></div>
-            <div><strong>Hand:</strong> <span id="live-hand-id">Waiting...</span></div>
-            <div><strong>Stage:</strong> <span id="live-stage" class="badge">PREFLOP</span></div>
-            <div><strong>Blinds:</strong> 50 / 100</div>
+            <div class="table-info-stats">
+              <div class="info-stat-item"><strong style="color: var(--accent-gold);">🤖 Match:</strong> <span id="live-match-info">Match #1 &middot; 6/6 Alive</span></div>
+              <div class="info-stat-item"><strong>Hand:</strong> <span id="live-hand-id">Waiting...</span></div>
+              <div class="info-stat-item"><strong>Stage:</strong> <span id="live-stage" class="badge">PREFLOP</span></div>
+              <div class="info-stat-item"><strong>Blinds:</strong> 50 / 100</div>
+            </div>
+            <div class="table-info-actions">
+              <button type="button" id="btn-enter-standalone" class="btn btn-secondary btn-sm btn-standalone-toggle" title="Hide page headers and view only the live poker table">
+                ⛶ Focus Table
+              </button>
+              <a href="/?view=table" target="_blank" rel="noopener" id="link-open-standalone" class="btn btn-outline btn-sm btn-standalone-popout" title="Open standalone poker table in a new browser tab">
+                ↗ Standalone Page
+              </a>
+            </div>
           </div>
 
           <!-- Oval Poker Table -->

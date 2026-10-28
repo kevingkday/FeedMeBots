@@ -232,10 +232,114 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--border-color);
   font-size: 14px;
   color: var(--text-secondary);
+}
+
+.table-info-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+
+.table-info-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-standalone-popout {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.seat-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.seat-pos-badges {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.pos-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.pos-pill.pos-d {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1.5px solid #ef4444;
+}
+
+.pos-pill.pos-sb {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+}
+
+.pos-pill.pos-bb {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.seat-chips-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.seat-status-pill {
+  display: none;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+}
+
+.seat-status-pill.folded {
+  background: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+}
+
+.seat-status-pill.all-in {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.seat-status-pill.eliminated {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.seat-bottom-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .badge {
@@ -1916,6 +2020,355 @@ pre.code-view {
   font-weight: 600;
   font-size: 11px;
 }
+
+/* ==========================================================================
+   Standalone Table Mode (Desktop & Mobile)
+   ========================================================================== */
+
+.standalone-topbar {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.standalone-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.standalone-brand strong span {
+  color: var(--accent-primary);
+}
+
+.standalone-logo {
+  font-size: 20px;
+}
+
+.standalone-badge {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.standalone-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+body.standalone-table-mode .standalone-topbar {
+  display: flex;
+}
+
+body.standalone-table-mode .app-header,
+body.standalone-table-mode .nav-tabs,
+body.standalone-table-mode #home-hero-card,
+body.standalone-table-mode #link-open-standalone {
+  display: none !important;
+}
+
+body.standalone-table-mode .app-container {
+  max-width: 1520px;
+  padding: 14px 20px;
+}
+
+@media (min-width: 769px) {
+  body.standalone-table-mode .poker-table {
+    max-height: 580px;
+    margin: 28px 0;
+  }
+
+  body.standalone-table-mode .action-sidebar {
+    max-height: 680px;
+  }
+}
+
+/* ==========================================================================
+   Mobile & Tablet Responsive Poker Table Layout
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 12px;
+  }
+
+  body.standalone-table-mode .app-container {
+    padding: 8px 10px;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+  }
+
+  .brand {
+    gap: 12px;
+  }
+
+  .brand-logo {
+    font-size: 26px;
+    padding: 6px 10px;
+  }
+
+  .brand-text h1 {
+    font-size: 22px;
+  }
+
+  .header-controls {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .header-quick-links {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    gap: 8px;
+  }
+
+  .quick-link-pill {
+    flex-shrink: 0;
+  }
+
+  .nav-tabs {
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+  }
+
+  .nav-tab {
+    font-size: 13px;
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+
+  .table-stage-wrapper {
+    padding: 14px;
+  }
+
+  .table-info-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding-bottom: 12px;
+  }
+
+  .table-info-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+    font-size: 12px;
+  }
+
+  .info-stat-item {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .table-info-actions {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .table-info-actions .btn {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  /* Transform Oval Table into Mobile Felt Board + 2-Column Bot Seat Grid */
+  .poker-table {
+    aspect-ratio: auto;
+    max-height: none;
+    margin: 12px 0 0 0;
+    display: block;
+  }
+
+  .felt-surface {
+    width: 100%;
+    height: auto;
+    background: transparent;
+    border: none;
+    outline: none;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Top Felt Board for Pot & 5 Community Cards */
+  .board-area {
+    width: 100%;
+    background: radial-gradient(circle at center, #1c4b36 0%, #102d20 90%, #0a1f16 100%);
+    border: 3px solid #3d2314;
+    border-radius: 14px;
+    padding: 14px 10px;
+    box-shadow:
+      inset 0 0 24px rgba(0, 0, 0, 0.6),
+      0 6px 16px rgba(0, 0, 0, 0.45);
+    gap: 10px;
+  }
+
+  .pot-badge {
+    font-size: 14px;
+    padding: 4px 14px;
+  }
+
+  .community-cards {
+    gap: 6px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .community-cards .card {
+    width: 44px;
+    height: 62px;
+    font-size: 14px;
+  }
+
+  /* 6-Max Bot Seats as 2x3 Mobile Card Grid (Zero Overlap) */
+  .seats-container {
+    position: static;
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    pointer-events: auto;
+  }
+
+  .seat {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+
+  .seat.active-turn {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
+  }
+
+  .seat.active-turn .seat-avatar {
+    border-color: transparent;
+    box-shadow: none;
+    animation: none;
+  }
+
+  .dealer-button {
+    display: none;
+  }
+
+  .seat-pos-badges {
+    display: inline-flex;
+  }
+
+  .seat-status-pill {
+    display: inline-block;
+  }
+
+  .seat-avatar {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    text-align: left;
+  }
+
+  .seat-header-row {
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .seat-name {
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .seat-chips-row {
+    justify-content: space-between;
+    margin-top: 3px;
+  }
+
+  .seat-chips {
+    font-size: 12px;
+  }
+
+  .seat-bottom-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-height: 46px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .seat-cards .card {
+    width: 32px;
+    height: 44px;
+    font-size: 11px;
+  }
+
+  .seat-bet {
+    font-size: 11px;
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+
+  .action-sidebar {
+    padding: 14px;
+    max-height: 280px;
+  }
+
+  .standalone-topbar {
+    padding: 8px 12px;
+    margin-bottom: 10px;
+  }
+
+  .standalone-brand {
+    font-size: 15px;
+  }
+
+  .standalone-badge {
+    display: none;
+  }
+}
+
 
 
 

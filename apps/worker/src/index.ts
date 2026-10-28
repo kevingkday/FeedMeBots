@@ -427,7 +427,9 @@ app.get('/api/errors', async (c) => {
   }
 });
 
-// 14. Contract & Schema Specification Endpoints
+// 14. Contract, Standalone Table & Schema Specification Endpoints
+app.get('/table', (c) => c.redirect('/?view=table'));
+app.get('/arena', (c) => c.redirect('/?view=table'));
 app.get('/contract', (c) => c.redirect('/#contract'));
 app.get('/api-contract', (c) => c.redirect('/#contract'));
 app.get('/spec', (c) => c.redirect('/#contract'));
